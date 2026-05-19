@@ -94,7 +94,34 @@ app.get('/api/subjects', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+const express = require('express');
+const { Pool } = require('pg');
+const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const path = require('path');
 
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Database connection
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+});
+
+// ... rest of your API routes ...
+
+// Fallback for any unmatched routes - serve index.html
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
+
+module.exports = app;
 // ==================== SERVE HTML ====================
 app.get('/', (req, res) => {
     res.send(`
