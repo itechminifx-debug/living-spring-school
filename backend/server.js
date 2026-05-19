@@ -53,20 +53,6 @@ app.post('/api/auth/login', async (req, res) => {
     
     console.log('Admin login attempt:', username);
     
-    // Hardcoded admin for testing
-    if (username === 'admin' && password === 'admin123') {
-        const token = jwt.sign(
-            { id: '1', username: 'admin', role: 'admin' },
-            process.env.JWT_SECRET || 'mySecretKey123',
-            { expiresIn: '24h' }
-        );
-        return res.json({ 
-            success: true, 
-            token, 
-            user: { id: '1', username: 'admin', role: 'admin' } 
-        });
-    }
-    
     try {
         const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
         const user = result.rows[0];
@@ -81,12 +67,16 @@ app.post('/api/auth/login', async (req, res) => {
         }
         
         const token = jwt.sign(
-            { id: user.id, username: user.username, role: user.role },
+            { id: user.id, username: user.username, role: user.role || 'admin' },
             process.env.JWT_SECRET || 'mySecretKey123',
             { expiresIn: '24h' }
         );
         
-        res.json({ success: true, token, user: { id: user.id, username: user.username, role: user.role } });
+        res.json({ 
+            success: true, 
+            token, 
+            user: { id: user.id, username: user.username, role: user.role || 'admin' } 
+        });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ success: false, message: error.message });
@@ -99,41 +89,23 @@ app.post('/api/teacher/login', async (req, res) => {
     
     console.log('Teacher login attempt:', email);
     
-    // Hardcoded teacher for testing
-    if (email === 'teacher@livingspring.edu.gh' && password === 'teacher123') {
-        const token = jwt.sign(
-            { id: '1', email: email, name: 'Demo Teacher', assigned_class: 'P4' },
-            process.env.JWT_SECRET || 'mySecretKey123',
-            { expiresIn: '24h' }
-        );
-        return res.json({ 
-            success: true, 
-            token, 
-            teacher: { id: '1', name: 'Demo Teacher', email: email, assigned_class: 'P4' } 
-        });
-    }
-    
     try {
         const result = await pool.query('SELECT * FROM teachers WHERE email = $1', [email]);
         const teacher = result.rows[0];
         
         if (!teacher) {
+            console.log('Teacher not found:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
         
-        let isValid = false;
-        try {
-            isValid = await bcrypt.compare(password, teacher.password);
-        } catch (err) {
-            isValid = (teacher.password === password);
-        }
-        
+        const isValid = await bcrypt.compare(password, teacher.password);
         if (!isValid) {
+            console.log('Invalid password for teacher:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
         
         const token = jwt.sign(
-            { id: teacher.id, email: teacher.email, name: teacher.name, assigned_class: teacher.assigned_class },
+            { id: teacher.id, email: teacher.email, name: teacher.name, assigned_class: teacher.assigned_class, role: 'teacher' },
             process.env.JWT_SECRET || 'mySecretKey123',
             { expiresIn: '24h' }
         );
@@ -166,7 +138,7 @@ app.post('/api/parent/login', async (req, res) => {
         
         const isValid = await bcrypt.compare(password, parent.password);
         if (!isValid) {
-            console.log('Invalid password for:', email);
+            console.log('Invalid password for parent:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
         
@@ -186,7 +158,6 @@ app.post('/api/parent/login', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
-
 
 // ==================== PARENT API ====================
 app.get('/api/parent/children', authenticateToken, async (req, res) => {
@@ -580,13 +551,61 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running', timestamp: new Date().toISOString() });
 });
 
+// ==================== DEBUG ENDPOINT ====================
+app.get('/api/debug-users', async (req, res) => {
+    try {
+        const users = await pool.query('SELECT username FROM users');
+        const teachers = await pool.query('SELECT email FROM teachers');
+        const parents = await pool.query('SELECT email FROM parents');
+        res.json({
+            users: users.rows,
+            teachers: teachers.rows,
+            parents: parents.rows
+        });
+    } catch (error) {
+        res.json({ error: error.message });
+    }
+});
+
+// ==================== CREATE DEFAULT DATA ENDPOINT ====================
+app.post('/api/setup-defaults', async (req, res) => {
+    try {
+        const hashedPassword = '$2a$10$N9qo8uLOickgx2ZMRZoMy.Mr/.cJqJFxZF6QqGQvQyQyQyQyQyQ';
+        
+        await pool.query(
+            `INSERT INTO users (username, password, role) 
+             VALUES ('admin', $1, 'admin')
+             ON CONFLICT (username) DO UPDATE SET password = $1`,
+            [hashedPassword]
+        );
+        
+        await pool.query(
+            `INSERT INTO teachers (teacher_id, name, email, password, assigned_class) 
+             VALUES ('TCH001', 'Demo Teacher', 'teacher@livingspring.edu.gh', $1, 'P4')
+             ON CONFLICT (email) DO UPDATE SET password = $1`,
+            [hashedPassword]
+        );
+        
+        await pool.query(
+            `INSERT INTO parents (parent_id, name, email, password, phone) 
+             VALUES ('PRT001', 'John Parent', 'parent@livingspring.edu.gh', $1, '+233 24 123 4567')
+             ON CONFLICT (email) DO UPDATE SET password = $1`,
+            [hashedPassword]
+        );
+        
+        res.json({ success: true, message: 'Default users created/updated' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ==================== SERVE FRONTEND ====================
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
 });
 
 app.get('/:page.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend', `${req.params.page}.html`));
+    res.sendFile(path.join(__dirname, 'frontend', `${req.params.page}.html`);
 });
 
 // ==================== START SERVER ====================
