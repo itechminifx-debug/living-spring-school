@@ -182,6 +182,15 @@ app.get('/:page.html', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'frontend', `${req.params.page}.html`));
 });
 
+app.get('/api/check-db', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT NOW()');
+        res.json({ success: true, time: result.rows[0].now, db: process.env.DATABASE_URL ? 'Connected' : 'No URL' });
+    } catch (error) {
+        res.json({ success: false, error: error.message, db_url: process.env.DATABASE_URL ? 'Set' : 'Missing' });
+    }
+});
+
 // ==================== FALLBACK ====================
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
