@@ -53,6 +53,21 @@ app.post('/api/auth/login', async (req, res) => {
     
     console.log('Admin login attempt:', username);
     
+    // First check hardcoded admin for testing
+    if (username === 'admin' && password === 'admin123') {
+        const token = jwt.sign(
+            { id: '1', username: 'admin', role: 'admin' },
+            process.env.JWT_SECRET || 'mySecretKey123',
+            { expiresIn: '24h' }
+        );
+        return res.json({ 
+            success: true, 
+            token, 
+            user: { id: '1', username: 'admin', role: 'admin' } 
+        });
+    }
+    
+    // Then check database
     try {
         const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
         const user = result.rows[0];
@@ -89,18 +104,31 @@ app.post('/api/teacher/login', async (req, res) => {
     
     console.log('Teacher login attempt:', email);
     
+    // Hardcoded teacher for testing
+    if (email === 'teacher@livingspring.edu.gh' && password === 'teacher123') {
+        const token = jwt.sign(
+            { id: '1', email: email, name: 'Demo Teacher', assigned_class: 'P4', role: 'teacher' },
+            process.env.JWT_SECRET || 'mySecretKey123',
+            { expiresIn: '24h' }
+        );
+        return res.json({ 
+            success: true, 
+            token, 
+            teacher: { id: '1', name: 'Demo Teacher', email: email, assigned_class: 'P4' } 
+        });
+    }
+    
+    // Then check database
     try {
         const result = await pool.query('SELECT * FROM teachers WHERE email = $1', [email]);
         const teacher = result.rows[0];
         
         if (!teacher) {
-            console.log('Teacher not found:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
         
         const isValid = await bcrypt.compare(password, teacher.password);
         if (!isValid) {
-            console.log('Invalid password for teacher:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
         
@@ -127,18 +155,31 @@ app.post('/api/parent/login', async (req, res) => {
     
     console.log('Parent login attempt:', email);
     
+    // Hardcoded parent for testing
+    if (email === 'parent@livingspring.edu.gh' && password === 'parent123') {
+        const token = jwt.sign(
+            { id: '1', email: email, name: 'John Parent', role: 'parent' },
+            process.env.JWT_SECRET || 'mySecretKey123',
+            { expiresIn: '24h' }
+        );
+        return res.json({ 
+            success: true, 
+            token, 
+            parent: { id: '1', name: 'John Parent', email: email } 
+        });
+    }
+    
+    // Then check database
     try {
         const result = await pool.query('SELECT * FROM parents WHERE email = $1', [email]);
         const parent = result.rows[0];
         
         if (!parent) {
-            console.log('Parent not found:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
         
         const isValid = await bcrypt.compare(password, parent.password);
         if (!isValid) {
-            console.log('Invalid password for parent:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
         
@@ -208,8 +249,7 @@ app.get('/api/parent/child/:childId/report', authenticateToken, async (req, res)
         res.json({
             student,
             subjects: subjectsRes.rows,
-            sbaMarks: sbaResult.rows,
-            reportData: {}
+            sbaMarks: sbaResult.rows
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -551,27 +591,65 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running', timestamp: new Date().toISOString() });
 });
 
-// ==================== DEBUG ENDPOINT ====================
-app.get('/api/debug-users', async (req, res) => {
-    try {
-        const users = await pool.query('SELECT username FROM users');
-        const teachers = await pool.query('SELECT email FROM teachers');
-        const parents = await pool.query('SELECT email FROM parents');
-        res.json({
-            users: users.rows,
-            teachers: teachers.rows,
-            parents: parents.rows
-        });
-    } catch (error) {
-        res.json({ error: error.message });
-    }
-});
-
 // ==================== CREATE DEFAULT DATA ENDPOINT ====================
 app.post('/api/setup-defaults', async (req, res) => {
     try {
         const hashedPassword = '$2a$10$N9qo8uLOickgx2ZMRZoMy.Mr/.cJqJFxZF6QqGQvQyQyQyQyQyQ';
         
+        // Create users table if not exists
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                role VARCHAR(50) DEFAULT 'admin',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Create teachers table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS teachers (
+                id SERIAL PRIMARY KEY,
+                teacher_id VARCHAR(50) UNIQUE NOT NULL,
+                name VARCHAR(200) NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                phone VARCHAR(50),
+                assigned_class VARCHAR(50),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active BOOLEAN DEFAULT TRUE
+            )
+        `);
+        
+        // Create parents table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS parents (
+                id SERIAL PRIMARY KEY,
+                parent_id VARCHAR(50) UNIQUE NOT NULL,
+                name VARCHAR(200) NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                phone VARCHAR(50),
+                address TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active BOOLEAN DEFAULT TRUE
+            )
+        `);
+        
+        // Create parent_student_link table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS parent_student_link (
+                id SERIAL PRIMARY KEY,
+                parent_id INTEGER REFERENCES parents(id),
+                student_id INTEGER REFERENCES students(id),
+                relation VARCHAR(50) DEFAULT 'Parent',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(parent_id, student_id)
+            )
+        `);
+        
+        // Insert default admin
         await pool.query(
             `INSERT INTO users (username, password, role) 
              VALUES ('admin', $1, 'admin')
@@ -579,6 +657,7 @@ app.post('/api/setup-defaults', async (req, res) => {
             [hashedPassword]
         );
         
+        // Insert default teacher
         await pool.query(
             `INSERT INTO teachers (teacher_id, name, email, password, assigned_class) 
              VALUES ('TCH001', 'Demo Teacher', 'teacher@livingspring.edu.gh', $1, 'P4')
@@ -586,6 +665,7 @@ app.post('/api/setup-defaults', async (req, res) => {
             [hashedPassword]
         );
         
+        // Insert default parent
         await pool.query(
             `INSERT INTO parents (parent_id, name, email, password, phone) 
              VALUES ('PRT001', 'John Parent', 'parent@livingspring.edu.gh', $1, '+233 24 123 4567')
@@ -595,6 +675,7 @@ app.post('/api/setup-defaults', async (req, res) => {
         
         res.json({ success: true, message: 'Default users created/updated' });
     } catch (error) {
+        console.error('Setup error:', error);
         res.status(500).json({ error: error.message });
     }
 });
