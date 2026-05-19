@@ -534,6 +534,109 @@ app.post('/api/settings', async (req, res) => {
     }
 });
 
+// ==================== PARENT API ====================
+
+// Parent login
+app.post('/api/parent/login', async (req, res) => {
+    const { email, password } = req.body;
+    
+    try {
+        const result = await pool.query('SELECT * FROM parents WHERE email = $1', [email]);
+        const parent = result.rows[0];
+        
+        if (!parent) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        
+        const isValid = await bcrypt.compare(password, parent.password);
+        if (!isValid) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        
+        const token = jwt.sign(
+            { id: parent.id, email: parent.email, name: parent.name, role: 'parent' },
+            process.env.JWT_SECRET || 'mySecretKey123',
+            { expiresIn: '24h' }
+        );
+        
+        res.json({ 
+            success: true, 
+            token, 
+            parent: { id: parent.id, name: parent.name, email: parent.email } 
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get parent's children
+app.get('/api/parent/children', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'parent') {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT s.* FROM students s
+            JOIN parent_student_link psl ON s.id = psl.student_id
+            WHERE psl.parent_id = $1
+        `, [req.user.id]);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get child's report card data
+app.get('/api/parent/child/:childId/report', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'parent') {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    
+    const { childId } = req.params;
+    const { term, academic_year } = req.query;
+    
+    try {
+        // Verify parent has access to this child
+        const accessCheck = await pool.query(
+            'SELECT * FROM parent_student_link WHERE parent_id = $1 AND student_id = $2',
+            [req.user.id, childId]
+        );
+        
+        if (accessCheck.rows.length === 0) {
+            return res.status(403).json({ success: false, message: 'Access denied to this student' });
+        }
+        
+        // Get student details
+        const studentResult = await pool.query('SELECT * FROM students WHERE id = $1', [childId]);
+        const student = studentResult.rows[0];
+        
+        // Get subjects for this class
+        const subjectsRes = await pool.query('SELECT * FROM subjects WHERE class_level = $1', [student.class_level]);
+        
+        // Get SBA marks
+        const sbaResult = await pool.query(
+            'SELECT * FROM sba_marks WHERE student_id = $1 AND term = $2 AND academic_year = $3',
+            [childId, term, academic_year]
+        );
+        
+        // Get report data from localStorage (teacher entered)
+        const reportDataKey = `${student.class_level}_${term}_${academic_year}`;
+        const allReportData = JSON.parse(localStorage.getItem('teacher_report_data') || '{}');
+        const reportData = allReportData[reportDataKey] || {};
+        const studentReportData = reportData[childId] || {};
+        
+        res.json({
+            student,
+            subjects: subjectsRes.rows,
+            sbaMarks: sbaResult.rows,
+            reportData: studentReportData
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ==================== START SERVER ====================
 app.listen(PORT, () => {
     console.log(`
