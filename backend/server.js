@@ -76,6 +76,39 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// ==================== TEACHER AUTH ====================
+app.post('/api/teacher/login', async (req, res) => {
+    const { email, password } = req.body;
+    
+    try {
+        const result = await pool.query('SELECT * FROM teachers WHERE email = $1', [email]);
+        const teacher = result.rows[0];
+        
+        if (!teacher) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        
+        const isValid = await bcrypt.compare(password, teacher.password);
+        if (!isValid) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        
+        const token = jwt.sign(
+            { id: teacher.id, email: teacher.email, name: teacher.name, assigned_class: teacher.assigned_class },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+        
+        res.json({ 
+            success: true, 
+            token, 
+            teacher: { id: teacher.id, name: teacher.name, email: teacher.email, assigned_class: teacher.assigned_class } 
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // ==================== STUDENT API ====================
 
 // Get all students
@@ -164,6 +197,10 @@ app.put('/api/students/:id', async (req, res) => {
 // Delete student
 app.delete('/api/students/:id', async (req, res) => {
     try {
+        // First delete related SBA marks
+        await pool.query('DELETE FROM sba_marks WHERE student_id = $1', [req.params.id]);
+        
+        // Then delete the student
         const result = await pool.query('DELETE FROM students WHERE id = $1 RETURNING id', [req.params.id]);
         
         if (result.rows.length === 0) {
@@ -208,6 +245,65 @@ app.get('/api/subjects', async (req, res) => {
         res.json(result.rows);
     } catch (error) {
         console.error('Subjects error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ==================== TEACHER API ====================
+
+// Get teacher's students
+app.get('/api/teacher/students', async (req, res) => {
+    const { class_level } = req.query;
+    try {
+        const result = await pool.query('SELECT * FROM students WHERE class_level = $1 ORDER BY name', [class_level]);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get teacher's subjects
+app.get('/api/teacher/subjects', async (req, res) => {
+    const { class_level } = req.query;
+    try {
+        let query = 'SELECT * FROM subjects WHERE 1=1';
+        let params = [];
+        
+        if (class_level === 'KG1' || class_level === 'KG2') {
+            query += ' AND class_level IN ($1, $2) ORDER BY display_order';
+            params = ['KG1', 'KG2'];
+        } else if (class_level === 'P1' || class_level === 'P2' || class_level === 'P3') {
+            query += ' AND class_level = $1 ORDER BY display_order';
+            params = ['P1-3'];
+        } else if (class_level === 'P4' || class_level === 'P5' || class_level === 'P6') {
+            query += ' AND class_level = $1 ORDER BY display_order';
+            params = ['P4-6'];
+        } else if (class_level === 'JHS1' || class_level === 'JHS2' || class_level === 'JHS3') {
+            query += ' AND class_level = $1 ORDER BY display_order';
+            params = ['JHS'];
+        } else {
+            query += ' AND class_level = $1 ORDER BY display_order';
+            params = [class_level];
+        }
+        
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get teacher's stats
+app.get('/api/teacher/stats', async (req, res) => {
+    try {
+        const studentResult = await pool.query('SELECT COUNT(*) FROM students');
+        const subjectResult = await pool.query('SELECT COUNT(*) FROM subjects');
+        
+        res.json({
+            studentCount: parseInt(studentResult.rows[0].count),
+            subjectsCount: parseInt(subjectResult.rows[0].count)
+        });
+    } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
@@ -271,17 +367,6 @@ app.post('/api/sba', async (req, res) => {
     } = req.body;
     
     try {
-        // Round to 2 decimal places to avoid PostgreSQL errors
-        const roundedTest1 = Math.round((test1 || 0) * 100) / 100;
-        const roundedGroupWork = Math.round((group_work || 0) * 100) / 100;
-        const roundedMidTerm = Math.round((mid_term || 0) * 100) / 100;
-        const roundedProject = Math.round((project || 0) * 100) / 100;
-        const roundedExam = Math.round((exam || 0) * 100) / 100;
-        const roundedSubTotal = Math.round((sub_total || 0) * 100) / 100;
-        const roundedClassScore = Math.round((class_score || 0) * 100) / 100;
-        const roundedExamScore = Math.round((exam_score || 0) * 100) / 100;
-        const roundedTotal = Math.round((total || 0) * 100) / 100;
-        
         const result = await pool.query(
             `INSERT INTO sba_marks (student_id, subject_id, term, academic_year, 
              test1, group_work, mid_term, project, exam, 
@@ -289,8 +374,8 @@ app.post('/api/sba', async (req, res) => {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) 
              RETURNING *`,
             [student_id, subject_id, term, academic_year, 
-             roundedTest1, roundedGroupWork, roundedMidTerm, roundedProject, roundedExam,
-             roundedSubTotal, roundedClassScore, roundedExamScore, roundedTotal, grade || '', remarks || '']
+             test1 || 0, group_work || 0, mid_term || 0, project || 0, exam || 0,
+             sub_total || 0, class_score || 0, exam_score || 0, total || 0, grade || '', remarks || '']
         );
         res.json({ success: true, mark: result.rows[0] });
     } catch (error) {
@@ -306,24 +391,13 @@ app.put('/api/sba/:id', async (req, res) => {
     } = req.body;
     
     try {
-        // Round to 2 decimal places to avoid PostgreSQL errors
-        const roundedTest1 = Math.round((test1 || 0) * 100) / 100;
-        const roundedGroupWork = Math.round((group_work || 0) * 100) / 100;
-        const roundedMidTerm = Math.round((mid_term || 0) * 100) / 100;
-        const roundedProject = Math.round((project || 0) * 100) / 100;
-        const roundedExam = Math.round((exam || 0) * 100) / 100;
-        const roundedSubTotal = Math.round((sub_total || 0) * 100) / 100;
-        const roundedClassScore = Math.round((class_score || 0) * 100) / 100;
-        const roundedExamScore = Math.round((exam_score || 0) * 100) / 100;
-        const roundedTotal = Math.round((total || 0) * 100) / 100;
-        
         const result = await pool.query(
             `UPDATE sba_marks SET 
              test1 = $1, group_work = $2, mid_term = $3, project = $4, exam = $5,
              sub_total = $6, class_score = $7, exam_score = $8, total = $9, grade = $10, remarks = $11
              WHERE id = $12 RETURNING *`,
-            [roundedTest1, roundedGroupWork, roundedMidTerm, roundedProject, roundedExam,
-             roundedSubTotal, roundedClassScore, roundedExamScore, roundedTotal, grade || '', remarks || '', req.params.id]
+            [test1 || 0, group_work || 0, mid_term || 0, project || 0, exam || 0,
+             sub_total || 0, class_score || 0, exam_score || 0, total || 0, grade || '', remarks || '', req.params.id]
         );
         res.json({ success: true, mark: result.rows[0] });
     } catch (error) {
@@ -334,35 +408,20 @@ app.put('/api/sba/:id', async (req, res) => {
 
 // ==================== DASHBOARD STATS ====================
 
-// ==================== DASHBOARD STATS ====================
-
-// Get dashboard stats - FIXED (no localStorage)
 app.get('/api/stats', async (req, res) => {
     try {
         const studentResult = await pool.query('SELECT COUNT(*) FROM students');
         const studentCount = parseInt(studentResult.rows[0].count);
         
-        // Get current term and academic year from database or use defaults
-        const termResult = await pool.query("SELECT setting_value FROM system_settings WHERE setting_key = 'current_term'");
-        const yearResult = await pool.query("SELECT setting_value FROM system_settings WHERE setting_key = 'academic_year'");
-        
-        const currentTerm = termResult.rows.length > 0 ? parseInt(termResult.rows[0].setting_value) : 1;
-        const academicYear = yearResult.rows.length > 0 ? yearResult.rows[0].setting_value : '2025/2026';
-        
         res.json({
             studentCount: studentCount,
             classLevels: 12,
-            currentTerm: currentTerm,
-            academicYear: academicYear
+            currentTerm: parseInt(localStorage.getItem('currentTerm') || '1'),
+            academicYear: localStorage.getItem('academicYear') || '2025/2026'
         });
     } catch (error) {
         console.error('Stats error:', error);
-        res.status(500).json({ 
-            studentCount: 0,
-            classLevels: 12,
-            currentTerm: 1,
-            academicYear: '2025/2026'
-        });
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -371,156 +430,13 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// ==================== TEACHER API ====================
-
-// Teacher login
-// Teacher login
-// Teacher login - SIMPLE VERSION (plain text password for testing)
-app.post('/api/teacher/login', async (req, res) => {
-    const { email, password } = req.body;
-    
-    console.log('========================================');
-    console.log('Teacher Login Attempt:');
-    console.log('Email:', email);
-    console.log('Password:', password);
-    
-    try {
-        const result = await pool.query('SELECT * FROM teachers WHERE email = $1', [email]);
-        const teacher = result.rows[0];
-        
-        if (!teacher) {
-            console.log('❌ Teacher not found:', email);
-            return res.status(401).json({ success: false, message: 'Invalid credentials - User not found' });
-        }
-        
-        console.log('✅ Teacher found:', teacher.name);
-        console.log('Stored password:', teacher.password);
-        console.log('Provided password:', password);
-        
-        // Plain text comparison for testing
-        if (teacher.password !== password) {
-            console.log('❌ Password mismatch');
-            return res.status(401).json({ success: false, message: 'Invalid credentials - Wrong password' });
-        }
-        
-        console.log('✅ Password matched!');
-        
-        const token = jwt.sign(
-            { id: teacher.id, email: teacher.email, name: teacher.name, assigned_class: teacher.assigned_class },
-            process.env.JWT_SECRET || 'my_secret_key',
-            { expiresIn: '24h' }
-        );
-        
-        res.json({ 
-            success: true, 
-            token, 
-            teacher: { 
-                id: teacher.id, 
-                name: teacher.name, 
-                email: teacher.email, 
-                assigned_class: teacher.assigned_class 
-            } 
-        });
-        console.log('✅ Login successful!');
-        console.log('========================================');
-    } catch (error) {
-        console.error('Teacher login error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-// Teacher auth middleware
-const authTeacher = async (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-        return res.status(401).json({ success: false, message: 'Access denied' });
-    }
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.teacher = decoded;
-        next();
-    } catch (error) {
-        res.status(401).json({ success: false, message: 'Invalid token' });
-    }
-};
-
-// Get teacher's students
-app.get('/api/teacher/students', authTeacher, async (req, res) => {
-    const { class_level } = req.query;
-    try {
-        const result = await pool.query('SELECT * FROM students WHERE class_level = $1 ORDER BY name', [class_level]);
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+// ==================== SERVE FRONTEND ====================
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
 });
 
-// Get teacher's subjects
-app.get('/api/teacher/subjects', authTeacher, async (req, res) => {
-    const { class_level } = req.query;
-    try {
-        let query = 'SELECT * FROM subjects WHERE 1=1';
-        let params = [];
-        
-        if (class_level === 'KG1' || class_level === 'KG2') {
-            query += ' AND class_level IN ($1, $2) ORDER BY display_order';
-            params = ['KG1', 'KG2'];
-        } else if (class_level === 'P1' || class_level === 'P2' || class_level === 'P3') {
-            query += ' AND class_level = $1 ORDER BY display_order';
-            params = ['P1-3'];
-        } else if (class_level === 'P4' || class_level === 'P5' || class_level === 'P6') {
-            query += ' AND class_level = $1 ORDER BY display_order';
-            params = ['P4-6'];
-        } else if (class_level === 'JHS1' || class_level === 'JHS2' || class_level === 'JHS3') {
-            query += ' AND class_level = $1 ORDER BY display_order';
-            params = ['JHS'];
-        } else {
-            query += ' AND class_level = $1 ORDER BY display_order';
-            params = [class_level];
-        }
-        
-        const result = await pool.query(query, params);
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Get teacher's stats
-app.get('/api/teacher/stats', authTeacher, async (req, res) => {
-    try {
-        const studentResult = await pool.query('SELECT COUNT(*) FROM students WHERE class_level = $1', [req.teacher.assigned_class]);
-        const subjectResult = await pool.query('SELECT COUNT(*) FROM subjects WHERE class_level IN ($1, $2, $3)', ['P1-3', 'P4-6', 'JHS']);
-        
-        res.json({
-            studentCount: parseInt(studentResult.rows[0].count),
-            subjectsCount: parseInt(subjectResult.rows[0].count)
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-// Debug - List all teachers (remove in production)
-app.get('/api/debug/teachers', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT id, teacher_id, name, email, assigned_class FROM teachers');
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Delete student
-app.delete('/api/students/:id', async (req, res) => {
-    try {
-        const result = await pool.query('DELETE FROM students WHERE id = $1 RETURNING id', [req.params.id]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Student not found' });
-        }
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error deleting student:', error);
-        res.status(500).json({ error: error.message });
-    }
+app.get('/:page.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'frontend', `${req.params.page}.html`));
 });
 
 // ==================== START SERVER ====================
@@ -535,9 +451,4 @@ app.listen(PORT, () => {
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
     `);
-});
-// At the very end of server.js
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
 });
