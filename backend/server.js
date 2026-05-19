@@ -605,7 +605,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/:page.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend', `${req.params.page}.html`);
+    res.sendFile(path.join(__dirname, 'frontend', `${req.params.page}.html`));
 });
 
 // ==================== START SERVER ====================
