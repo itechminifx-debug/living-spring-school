@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Students | Living Spring School</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        body {
+            background: #f0f2f5;
+        }
+        
+        .header {
+            background: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .logo h1 {
+            font-size: 20px;
+            color: #1e293b;
+        }
+        
+        .logo span {
+            color: #4f46e5;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .back-btn {
+            background: #64748b;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .card h2 {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .btn {
+            background: #4f46e5;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            text-align: left;
+            padding: 12px;
+            background: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        tr:hover td {
+            background: #f8fafc;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #1e293b;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .form-group small {
+            display: block;
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        
+        .search-box {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .search-box input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            min-width: 150px;
+        }
+        
+        .search-box select {
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .edit-btn {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .delete-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .header { flex-direction: column; text-align: center; }
+            table { font-size: 12px; }
+            th, td { padding: 8px; }
+            .action-buttons { flex-direction: column; gap: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <h1>Living Spring <span>Adventist Academy</span></h1>
+        </div>
+        <div class="user-info">
+            <span id="userName">Admin</span>
+            <a href="dashboard.html" class="back-btn">← Back</a>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <h2>
+                👨‍🎓 Student Management
+                <button class="btn" onclick="openAddModal()">+ Add Student</button>
+            </h2>
+            
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search by name or ID..." onkeyup="loadStudents()">
+                <select id="classFilter" onchange="loadStudents()">
+                    <option value="all">All Classes</option>
+                    <option value="KG1">KG 1</option>
+                    <option value="KG2">KG 2</option>
+                    <option value="P1">Primary 1</option>
+                    <option value="P2">Primary 2</option>
+                    <option value="P3">Primary 3</option>
+                    <option value="P4">Primary 4</option>
+                    <option value="P5">Primary 5</option>
+                    <option value="P6">Primary 6</option>
+                    <option value="JHS1">JHS 1</option>
+                    <option value="JHS2">JHS 2</option>
+                    <option value="JHS3">JHS 3</option>
+                </select>
+            </div>
+            
+            <div style="overflow-x: auto;">
+                <table id="studentsTable">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Class</th>
+                            <th>House</th>
+                            <th>Gender</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody">
+                        <tr>
+                            <td colspan="6" style="text-align:center; padding:40px;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add/Edit Student Modal -->
+    <div id="studentModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Add Student</h3>
+            <input type="hidden" id="studentId">
+            <div class="form-group">
+                <label>Student Name *</label>
+                <input type="text" id="studentName" placeholder="Full name">
+            </div>
+            <div class="form-group">
+                <label>Student ID (Optional)</label>
+                <input type="text" id="studentManualId" placeholder="e.g., LS-2024-001 or STU001">
+                <small>Leave empty to auto-generate (e.g., LS-0001, LS-0002)</small>
+            </div>
+            <div class="form-group">
+                <label>Class Level</label>
+                <select id="studentClass">
+                    <option value="KG1">KG 1</option>
+                    <option value="KG2">KG 2</option>
+                    <option value="P1">Primary 1</option>
+                    <option value="P2">Primary 2</option>
+                    <option value="P3">Primary 3</option>
+                    <option value="P4">Primary 4</option>
+                    <option value="P5">Primary 5</option>
+                    <option value="P6">Primary 6</option>
+                    <option value="JHS1">JHS 1</option>
+                    <option value="JHS2">JHS 2</option>
+                    <option value="JHS3">JHS 3</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>House</label>
+                <select id="studentHouse">
+                    <option value="">Select House</option>
+                    <option value="Red">Red House</option>
+                    <option value="Blue">Blue House</option>
+                    <option value="Green">Green House</option>
+                    <option value="Yellow">Yellow House</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Gender</label>
+                <select id="studentGender">
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="saveStudent()">Save</button>
+                <button class="btn btn-danger" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API_URL = '';
+        
+        // Check login
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+        
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        document.getElementById('userName').innerText = user.username || 'Admin';
+        
+        // Load students from API
+        async function loadStudents() {
+            try {
+                const response = await fetch(API_URL + '/api/students');
+                let students = await response.json();
+                
+                // Apply search filter
+                const search = document.getElementById('searchInput').value.toLowerCase();
+                if (search) {
+                    students = students.filter(s => 
+                        s.name.toLowerCase().includes(search) || 
+                        s.student_id.toLowerCase().includes(search)
+                    );
+                }
+                
+                // Apply class filter
+                const classFilter = document.getElementById('classFilter').value;
+                if (classFilter !== 'all') {
+                    students = students.filter(s => s.class_level === classFilter);
+                }
+                
+                renderTable(students);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('studentsTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">Error loading students</td></tr>';
+            }
+        }
+        
+        function formatClassName(classLevel) {
+            const classes = {
+                'KG1': 'KG 1', 'KG2': 'KG 2',
+                'P1': 'Primary 1', 'P2': 'Primary 2', 'P3': 'Primary 3',
+                'P4': 'Primary 4', 'P5': 'Primary 5', 'P6': 'Primary 6',
+                'JHS1': 'JHS 1', 'JHS2': 'JHS 2', 'JHS3': 'JHS 3'
+            };
+            return classes[classLevel] || classLevel;
+        }
+        
+        function renderTable(students) {
+            const tbody = document.getElementById('studentsTableBody');
+            
+            if (students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">No students found</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            students.forEach(s => {
+                html += `
+                    <tr>
+                        <td><strong>${escapeHtml(s.student_id)}</strong></td>
+                        <td>${escapeHtml(s.name)}</td>
+                        <td>${formatClassName(s.class_level)}</td>
+                        <td>${s.house || '-'}</td>
+                        <td>${s.gender || '-'}</td>
+                        <td class="action-buttons">
+                            <button class="edit-btn" onclick="editStudent(${s.id})">Edit</button>
+                            <button class="delete-btn" onclick="deleteStudent(${s.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+        
+        function openAddModal() {
+            document.getElementById('modalTitle').innerText = 'Add Student';
+            document.getElementById('studentId').value = '';
+            document.getElementById('studentName').value = '';
+            document.getElementById('studentManualId').value = '';
+            document.getElementById('studentClass').value = 'KG1';
+            document.getElementById('studentHouse').value = '';
+            document.getElementById('studentGender').value = 'Male';
+            document.getElementById('studentModal').style.display = 'flex';
+        }
+        
+        async function editStudent(id) {
+            try {
+                const response = await fetch(API_URL + `/api/students/${id}`);
+                const student = await response.json();
+                
+                document.getElementById('modalTitle').innerText = 'Edit Student';
+                document.getElementById('studentId').value = student.id;
+                document.getElementById('studentName').value = student.name;
+                document.getElementById('studentManualId').value = student.student_id || '';
+                document.getElementById('studentClass').value = student.class_level;
+                document.getElementById('studentHouse').value = student.house || '';
+                document.getElementById('studentGender').value = student.gender || 'Male';
+                document.getElementById('studentModal').style.display = 'flex';
+            } catch (error) {
+                alert('Error loading student');
+            }
+        }
+        
+        async function saveStudent() {
+            const id = document.getElementById('studentId').value;
+            const manualId = document.getElementById('studentManualId').value.trim();
+            const studentData = {
+                name: document.getElementById('studentName').value,
+                class_level: document.getElementById('studentClass').value,
+                house: document.getElementById('studentHouse').value,
+                gender: document.getElementById('studentGender').value,
+                student_id: manualId || null
+            };
+            
+            if (!studentData.name) {
+                alert('Please enter student name');
+                return;
+            }
+            
+            try {
+                let response;
+                if (id) {
+                    response = await fetch(API_URL + `/api/students/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(studentData)
+                    });
+                } else {
+                    response = await fetch(API_URL + '/api/students', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(studentData)
+                    });
+                }
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    closeModal();
+                    await loadStudents();
+                    if (result.error) {
+                        alert(result.error);
+                    } else {
+                        alert(id ? 'Student updated!' : 'Student added!');
+                    }
+                } else {
+                    alert(result.error || 'Error saving student');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        async function deleteStudent(id) {
+            if (confirm('Delete this student? This will also delete all their SBA marks.')) {
+                try {
+                    const response = await fetch(API_URL + `/api/students/${id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        await loadStudents();
+                        alert('Student deleted!');
+                    } else {
+                        alert('Error deleting student');
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('studentModal').style.display = 'none';
+        }
+        
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        // Load students on page load
+        loadStudents();
+    </script>
+</body>
+</html>

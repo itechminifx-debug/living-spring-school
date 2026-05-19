@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Class List | Living Spring School</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        body {
+            background: #f0f2f5;
+        }
+        
+        .header {
+            background: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .logo h1 {
+            font-size: 20px;
+            color: #1e293b;
+        }
+        
+        .logo span {
+            color: #f59e0b;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .back-btn {
+            background: #64748b;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .card h2 {
+            margin-bottom: 20px;
+        }
+        
+        .info-bar {
+            background: #fef3c7;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            text-align: left;
+            padding: 12px;
+            background: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        tr:hover td {
+            background: #f8fafc;
+        }
+        
+        .btn-print {
+            background: #1e293b;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .header { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <h1>Living Spring <span>Adventist Academy</span></h1>
+        </div>
+        <div class="user-info">
+            <span id="teacherName">Teacher</span>
+            <a href="teacher-dashboard.html" class="back-btn">← Dashboard</a>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <h2>📋 Class List</h2>
+            
+            <div class="info-bar">
+                <span><strong>Class:</strong> <span id="displayClass">Loading...</span></span>
+                <span><strong>Total Students:</strong> <span id="studentCount">0</span></span>
+                <button class="btn-print" onclick="window.print()">🖨️ Print</button>
+            </div>
+            
+            <div style="overflow-x: auto;">
+                <table id="studentsTable">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>House</th>
+                            <th>Gender</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody">
+                        <tr><td colspan="4" style="text-align:center; padding:40px;">Loading...<\/td><\/tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API_URL = '';
+        let teacherToken = null;
+        let teacher = null;
+        let currentClass = null;
+        
+        // Get class from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        currentClass = urlParams.get('class') || localStorage.getItem('teacherSelectedClass');
+        
+        // Check teacher login
+        teacherToken = localStorage.getItem('teacherToken');
+        if (!teacherToken) {
+            window.location.href = 'teacher-login.html';
+        }
+        
+        teacher = JSON.parse(localStorage.getItem('teacher') || '{}');
+        document.getElementById('teacherName').innerText = teacher.name || 'Teacher';
+        
+        function getClassName(classLevel) {
+            const classes = {
+                'KG1': 'KG 1', 'KG2': 'KG 2',
+                'P1': 'Primary 1', 'P2': 'Primary 2', 'P3': 'Primary 3',
+                'P4': 'Primary 4', 'P5': 'Primary 5', 'P6': 'Primary 6',
+                'JHS1': 'JHS 1', 'JHS2': 'JHS 2', 'JHS3': 'JHS 3'
+            };
+            return classes[classLevel] || classLevel;
+        }
+        
+        document.getElementById('displayClass').innerText = getClassName(currentClass);
+        
+        async function loadStudents() {
+            try {
+                const response = await fetch(API_URL + `/api/teacher/students?class_level=${currentClass}`, {
+                    headers: { 'Authorization': `Bearer ${teacherToken}` }
+                });
+                const students = await response.json();
+                
+                document.getElementById('studentCount').innerText = students.length;
+                
+                const tbody = document.getElementById('studentsTableBody');
+                
+                if (students.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:40px;">No students found<\/td><\/tr>';
+                    return;
+                }
+                
+                let html = '';
+                students.forEach(s => {
+                    html += `
+                        <tr>
+                            <td><strong>${escapeHtml(s.student_id)}<\/strong><\/td>
+                            <td>${escapeHtml(s.name)}<\/td>
+                            <td>${s.house || '-'}<\/td>
+                            <td>${s.gender || '-'}<\/td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('studentsTableBody').innerHTML = '<tr><td colspan="4" style="text-align:center; padding:40px;">Error loading students<\/td><\/tr>';
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('teacherToken');
+            localStorage.removeItem('teacher');
+            localStorage.removeItem('teacherSelectedClass');
+            window.location.href = 'teacher-login.html';
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        loadStudents();
+    </script>
+</body>
+</html>

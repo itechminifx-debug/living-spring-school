@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class List | Living Spring School</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        body {
+            background: #f0f2f5;
+        }
+        
+        .header {
+            background: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .logo h1 {
+            font-size: 20px;
+            color: #1e293b;
+        }
+        
+        .logo span {
+            color: #4f46e5;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .back-btn {
+            background: #64748b;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .card h2 {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+            align-items: flex-end;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .filter-group label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #1e293b;
+            text-transform: uppercase;
+        }
+        
+        .filter-group select, .filter-group input {
+            padding: 10px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 150px;
+        }
+        
+        .btn {
+            background: #4f46e5;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .btn-success {
+            background: #10b981;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            text-align: left;
+            padding: 12px;
+            background: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        tr:hover td {
+            background: #f8fafc;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-card .number {
+            font-size: 28px;
+            font-weight: 800;
+            color: #4f46e5;
+        }
+        
+        .stat-card .label {
+            font-size: 11px;
+            color: #64748b;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #64748b;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #4f46e5;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .header { flex-direction: column; text-align: center; }
+            .filter-bar { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <h1>Living Spring <span>Adventist Academy</span></h1>
+        </div>
+        <div class="user-info">
+            <span id="userName">Admin</span>
+            <a href="dashboard.html" class="back-btn">← Back</a>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <h2>
+                👨‍🎓 Class List
+                <div>
+                    <button class="btn btn-success" onclick="exportToCSV()">📥 Export CSV</button>
+                    <button class="btn" onclick="printClassList()">🖨️ Print</button>
+                </div>
+            </h2>
+            
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Class Level</label>
+                    <select id="classSelect" onchange="loadStudents()">
+                        <option value="all">All Classes</option>
+                        <option value="KG1">KG 1</option>
+                        <option value="KG2">KG 2</option>
+                        <option value="P1">Primary 1</option>
+                        <option value="P2">Primary 2</option>
+                        <option value="P3">Primary 3</option>
+                        <option value="P4">Primary 4</option>
+                        <option value="P5">Primary 5</option>
+                        <option value="P6">Primary 6</option>
+                        <option value="JHS1">JHS 1</option>
+                        <option value="JHS2">JHS 2</option>
+                        <option value="JHS3">JHS 3</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>House</label>
+                    <select id="houseFilter" onchange="loadStudents()">
+                        <option value="all">All Houses</option>
+                        <option value="Red">Red House</option>
+                        <option value="Blue">Blue House</option>
+                        <option value="Green">Green House</option>
+                        <option value="Yellow">Yellow House</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Search</label>
+                    <input type="text" id="searchInput" placeholder="Search by name or ID..." onkeyup="loadStudents()">
+                </div>
+            </div>
+            
+            <div class="stats" id="statsContainer"></div>
+            
+            <div class="table-container">
+                <table id="studentsTable">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Class</th>
+                            <th>House</th>
+                            <th>Gender</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody">
+                        <tr><td colspan="6" style="text-align:center; padding:40px;">Loading...<\/td><\/tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API_URL = '';
+        let allStudents = [];
+        
+        // Check login
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+        
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        document.getElementById('userName').innerText = user.username || 'Admin';
+        
+        async function loadStudents() {
+            try {
+                const response = await fetch(API_URL + '/api/students');
+                let students = await response.json();
+                
+                // Apply class filter
+                const classFilter = document.getElementById('classSelect').value;
+                if (classFilter !== 'all') {
+                    students = students.filter(s => s.class_level === classFilter);
+                }
+                
+                // Apply house filter
+                const houseFilter = document.getElementById('houseFilter').value;
+                if (houseFilter !== 'all') {
+                    students = students.filter(s => s.house === houseFilter);
+                }
+                
+                // Apply search filter
+                const search = document.getElementById('searchInput').value.toLowerCase();
+                if (search) {
+                    students = students.filter(s => 
+                        s.name.toLowerCase().includes(search) || 
+                        s.student_id.toLowerCase().includes(search)
+                    );
+                }
+                
+                allStudents = students;
+                renderTable();
+                updateStats();
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('studentsTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">Error loading students<\/td><\/tr>';
+            }
+        }
+        
+        function formatClassName(classLevel) {
+            const classes = {
+                'KG1': 'KG 1', 'KG2': 'KG 2',
+                'P1': 'Primary 1', 'P2': 'Primary 2', 'P3': 'Primary 3',
+                'P4': 'Primary 4', 'P5': 'Primary 5', 'P6': 'Primary 6',
+                'JHS1': 'JHS 1', 'JHS2': 'JHS 2', 'JHS3': 'JHS 3'
+            };
+            return classes[classLevel] || classLevel;
+        }
+        
+        function renderTable() {
+            const tbody = document.getElementById('studentsTableBody');
+            
+            if (allStudents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">No students found<\/td><\/tr>';
+                return;
+            }
+            
+            let html = '';
+            allStudents.forEach(s => {
+                html += `
+                    <tr data-student-id="${s.id}">
+                        <td><strong>${escapeHtml(s.student_id)}<\/strong><\/td>
+                        <td>${escapeHtml(s.name)}<\/td>
+                        <td>${formatClassName(s.class_level)}<\/td>
+                        <td>${s.house || '-'}<\/td>
+                        <td>${s.gender || '-'}<\/td>
+                        <td>
+                            <button class="btn" style="background:#f59e0b; padding:5px 10px; font-size:11px;" onclick="viewStudent(${s.id})">View</button>
+                            <button class="btn btn-danger" style="padding:5px 10px; font-size:11px;" onclick="deleteStudent(${s.id})">Delete</button>
+                        <\/td>
+                    <\/tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+        
+        function updateStats() {
+            const total = allStudents.length;
+            const boys = allStudents.filter(s => s.gender === 'Male').length;
+            const girls = allStudents.filter(s => s.gender === 'Female').length;
+            
+            const classFilter = document.getElementById('classSelect').value;
+            let className = 'All Classes';
+            if (classFilter !== 'all') {
+                className = formatClassName(classFilter);
+            }
+            
+            document.getElementById('statsContainer').innerHTML = `
+                <div class="stat-card"><div class="number">${total}</div><div class="label">Total Students</div></div>
+                <div class="stat-card"><div class="number">${boys}</div><div class="label">Boys</div></div>
+                <div class="stat-card"><div class="number">${girls}</div><div class="label">Girls</div></div>
+                <div class="stat-card"><div class="number">${className}</div><div class="label">Class</div></div>
+            `;
+        }
+        
+        async function deleteStudent(id) {
+            if (confirm('Delete this student? This will also delete all their SBA marks.')) {
+                try {
+                    const response = await fetch(API_URL + `/api/students/${id}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        await loadStudents();
+                        showToast('Student deleted!');
+                    } else {
+                        showToast('Error deleting student', 'error');
+                    }
+                } catch (error) {
+                    showToast('Error: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        function viewStudent(id) {
+            const student = allStudents.find(s => s.id === id);
+            if (student) {
+                alert(`Student Details:\n\nName: ${student.name}\nID: ${student.student_id}\nClass: ${formatClassName(student.class_level)}\nHouse: ${student.house || 'Not assigned'}\nGender: ${student.gender || 'Not specified'}`);
+            }
+        }
+        
+        function exportToCSV() {
+            if (allStudents.length === 0) {
+                showToast('No students to export', 'error');
+                return;
+            }
+            
+            let csv = 'Student ID,Name,Class,House,Gender\n';
+            allStudents.forEach(s => {
+                csv += `"${s.student_id}","${s.name}","${formatClassName(s.class_level)}","${s.house || ''}","${s.gender || ''}"\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `class_list_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Exported to CSV!');
+        }
+        
+        function printClassList() {
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            const settings = {
+                schoolName: localStorage.getItem('schoolName') || 'Living Spring Adventist Academy',
+                schoolAddress: localStorage.getItem('schoolAddress') || ''
+            };
+            
+            let tableRows = '';
+            allStudents.forEach(s => {
+                tableRows += `
+                    <tr>
+                        <td>${escapeHtml(s.student_id)}</td>
+                        <td>${escapeHtml(s.name)}</td>
+                        <td>${formatClassName(s.class_level)}</td>
+                        <td>${s.house || '-'}</td>
+                        <td>${s.gender || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Class List - ${settings.schoolName}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 30px; }
+                        h1 { color: #4f46e5; text-align: center; }
+                        .address { text-align: center; color: #666; margin-bottom: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th { background: #4f46e5; color: white; padding: 10px; text-align: left; }
+                        td { padding: 8px; border-bottom: 1px solid #ddd; }
+                        .footer { margin-top: 30px; text-align: center; font-size: 10px; color: #999; }
+                    </style>
+                </head>
+                <body>
+                    <h1>${escapeHtml(settings.schoolName)}</h1>
+                    <div class="address">${escapeHtml(settings.schoolAddress)}</div>
+                    <h3>Class List - ${formatClassName(document.getElementById('classSelect').value)}</h3>
+                    <p>Generated: ${new Date().toLocaleDateString()}</p>
+                    <table>
+                        <thead><tr><th>Student ID</th><th>Name</th><th>Class</th><th>House</th><th>Gender</th></tr></thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                    <div class="footer">Total Students: ${allStudents.length} | Boys: ${allStudents.filter(s => s.gender === 'Male').length} | Girls: ${allStudents.filter(s => s.gender === 'Female').length}</div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+        
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.backgroundColor = type === 'error' ? '#ef4444' : '#10b981';
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+        
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        // Load students on page load
+        loadStudents();
+    </script>
+</body>
+</html>

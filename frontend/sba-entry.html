@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBA Entry | Living Spring School</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        body {
+            background: #f0f2f5;
+        }
+        
+        .header {
+            background: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .logo h1 {
+            font-size: 20px;
+            color: #1e293b;
+        }
+        
+        .logo span {
+            color: #4f46e5;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .back-btn {
+            background: #64748b;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .card h2 {
+            margin-bottom: 20px;
+        }
+        
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+            align-items: flex-end;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .filter-group label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #1e293b;
+            text-transform: uppercase;
+        }
+        
+        .filter-group select, .filter-group input {
+            padding: 10px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 150px;
+        }
+        
+        .btn {
+            background: #4f46e5;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .btn-success {
+            background: #10b981;
+        }
+        
+        .btn-warning {
+            background: #f59e0b;
+            color: #1e293b;
+        }
+        
+        .btn-print {
+            background: #1e293b;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        th {
+            background: #4f46e5;
+            color: white;
+            padding: 12px 8px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+        }
+        
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        
+        td:first-child {
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        tr:hover td {
+            background: #f8fafc;
+        }
+        
+        input {
+            width: 70px;
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .total-cell {
+            font-weight: 700;
+            color: #4f46e5;
+            background: #f0fdf4;
+        }
+        
+        .grade-cell {
+            font-weight: 700;
+        }
+        
+        .grade-A { background: #d1fae5; color: #065f46; padding: 4px 8px; border-radius: 20px; display: inline-block; }
+        .grade-B { background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 20px; display: inline-block; }
+        .grade-C { background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 20px; display: inline-block; }
+        .grade-D { background: #fed7aa; color: #9a3412; padding: 4px 8px; border-radius: 20px; display: inline-block; }
+        .grade-E { background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 20px; display: inline-block; }
+        .grade-F { background: #fecaca; color: #7f1d1d; padding: 4px 8px; border-radius: 20px; display: inline-block; }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #64748b;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #4f46e5;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .saved-badge {
+            background: #10b981;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            margin-left: 5px;
+        }
+        
+        @media print {
+            .header, .filter-bar, .action-buttons, .back-btn, .logout-btn, .btn, .no-print {
+                display: none !important;
+            }
+            body { background: white; padding: 0; margin: 0; }
+            .container { padding: 0; }
+            .card { box-shadow: none; padding: 10px; margin: 0; }
+        }
+        
+        @media (max-width: 768px) {
+            .header { flex-direction: column; text-align: center; }
+            .filter-bar { flex-direction: column; }
+            input { width: 50px; }
+            td, th { font-size: 10px; padding: 6px 4px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <h1>Living Spring <span>Adventist Academy</span></h1>
+        </div>
+        <div class="user-info">
+            <span id="userName">Admin</span>
+            <a href="dashboard.html" class="back-btn">← Back</a>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <h2>📝 SBA Entry - School Based Assessment</h2>
+            
+            <div class="filter-bar no-print">
+                <div class="filter-group">
+                    <label>Class Level</label>
+                    <select id="classSelect">
+                        <option value="">Select Class</option>
+                        <option value="KG1">KG 1</option>
+                        <option value="KG2">KG 2</option>
+                        <option value="P1">Primary 1</option>
+                        <option value="P2">Primary 2</option>
+                        <option value="P3">Primary 3</option>
+                        <option value="P4">Primary 4</option>
+                        <option value="P5">Primary 5</option>
+                        <option value="P6">Primary 6</option>
+                        <option value="JHS1">JHS 1</option>
+                        <option value="JHS2">JHS 2</option>
+                        <option value="JHS3">JHS 3</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Subject</label>
+                    <select id="subjectSelect" disabled>
+                        <option value="">Select Class First</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Term</label>
+                    <select id="termSelect">
+                        <option value="1">Term 1</option>
+                        <option value="2">Term 2</option>
+                        <option value="3">Term 3</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Academic Year</label>
+                    <input type="text" id="academicYear" value="2025/2026" style="width: 120px;">
+                </div>
+                <button class="btn" onclick="loadStudents()">Load Students</button>
+            </div>
+            
+            <div id="marksTableContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Select class and subject to begin</p>
+                </div>
+            </div>
+            
+            <div class="action-buttons no-print" id="actionButtons" style="display: none;">
+                <button class="btn btn-success" onclick="saveAllMarks()">💾 Save All Marks</button>
+                <button class="btn btn-print" onclick="printToPDF()">🖨️ Print / Save as PDF</button>
+                <button class="btn btn-warning" onclick="loadStudents()">🔄 Refresh</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API_URL = '';
+        let students = [];
+        let subjects = [];
+        let currentClass = null;
+        let currentSubject = null;
+        let currentTerm = 1;
+        let currentYear = '2025/2026';
+        let marksData = {};
+        let currentSubjectName = '';
+        
+        // Check login
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+        
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        document.getElementById('userName').innerText = user.username || 'Admin';
+        
+        // Load saved settings
+        const savedYear = localStorage.getItem('academicYear');
+        if (savedYear) {
+            document.getElementById('academicYear').value = savedYear;
+            currentYear = savedYear;
+        }
+        
+        const savedTerm = localStorage.getItem('currentTerm');
+        if (savedTerm) {
+            document.getElementById('termSelect').value = savedTerm;
+            currentTerm = savedTerm;
+        }
+        
+        function getGrade(total) {
+            if (total >= 80) return { grade: 'A', remark: 'Excellent', class: 'grade-A' };
+            if (total >= 70) return { grade: 'B', remark: 'Very Good', class: 'grade-B' };
+            if (total >= 60) return { grade: 'C', remark: 'Good', class: 'grade-C' };
+            if (total >= 50) return { grade: 'D', remark: 'Satisfactory', class: 'grade-D' };
+            if (total >= 40) return { grade: 'E', remark: 'Weak', class: 'grade-E' };
+            return { grade: 'F', remark: 'Fail', class: 'grade-F' };
+        }
+        
+        function calculateAndDisplayTotals(rowId) {
+            const test1 = parseFloat(document.getElementById(`test1_${rowId}`)?.value) || 0;
+            const groupWork = parseFloat(document.getElementById(`group_${rowId}`)?.value) || 0;
+            const midTerm = parseFloat(document.getElementById(`mid_${rowId}`)?.value) || 0;
+            const project = parseFloat(document.getElementById(`project_${rowId}`)?.value) || 0;
+            const exam = parseFloat(document.getElementById(`exam_${rowId}`)?.value) || 0;
+            
+            const subTotal = test1 + groupWork + midTerm + project;
+            const classScore = (subTotal / 60) * 50;
+            const examScore = (exam / 100) * 50;
+            const total = classScore + examScore;
+            const gradeInfo = getGrade(total);
+            
+            document.getElementById(`subtotal_${rowId}`).innerHTML = `<strong>${Math.round(subTotal * 100) / 100}</strong>`;
+            document.getElementById(`classScore_${rowId}`).innerHTML = `<strong>${Math.round(classScore * 100) / 100}</strong>`;
+            document.getElementById(`examScore_${rowId}`).innerHTML = `<strong>${Math.round(examScore * 100) / 100}</strong>`;
+            document.getElementById(`total_${rowId}`).innerHTML = `<strong>${Math.round(total * 100) / 100}</strong>`;
+            document.getElementById(`grade_${rowId}`).innerHTML = `<span class="${gradeInfo.class}">${gradeInfo.grade}</span>`;
+            document.getElementById(`remarks_${rowId}`).innerHTML = gradeInfo.remark;
+            
+            return { test1, groupWork, midTerm, project, exam, subTotal, classScore, examScore, total, grade: gradeInfo.grade, remark: gradeInfo.remark };
+        }
+        
+        // Load subjects when class changes
+        document.getElementById('classSelect').addEventListener('change', async function() {
+            const className = this.value;
+            if (!className) {
+                document.getElementById('subjectSelect').innerHTML = '<option value="">Select Class First</option>';
+                document.getElementById('subjectSelect').disabled = true;
+                return;
+            }
+            
+            currentClass = className;
+            document.getElementById('subjectSelect').disabled = false;
+            document.getElementById('subjectSelect').innerHTML = '<option value="">Loading...</option>';
+            
+            try {
+                const response = await fetch(API_URL + `/api/subjects?class_level=${className}`);
+                subjects = await response.json();
+                
+                if (subjects.length === 0) {
+                    document.getElementById('subjectSelect').innerHTML = '<option value="">No subjects found for this class</option>';
+                } else {
+                    let html = '<option value="">Select Subject</option>';
+                    const uniqueSubjects = new Map();
+                    for (const s of subjects) {
+                        if (!uniqueSubjects.has(s.name)) {
+                            uniqueSubjects.set(s.name, s);
+                        }
+                    }
+                    for (const s of uniqueSubjects.values()) {
+                        html += `<option value="${s.id}">${s.name}</option>`;
+                    }
+                    document.getElementById('subjectSelect').innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Error loading subjects:', error);
+                document.getElementById('subjectSelect').innerHTML = '<option value="">Error loading subjects</option>';
+            }
+        });
+        
+        async function loadStudents() {
+            const classLevel = document.getElementById('classSelect').value;
+            const subjectId = document.getElementById('subjectSelect').value;
+            const term = document.getElementById('termSelect').value;
+            const academicYear = document.getElementById('academicYear').value;
+            
+            if (!classLevel || !subjectId) {
+                showToast('Please select Class and Subject', 'error');
+                return;
+            }
+            
+            currentSubject = subjectId;
+            currentTerm = term;
+            currentYear = academicYear;
+            
+            const subjectSelect = document.getElementById('subjectSelect');
+            currentSubjectName = subjectSelect.options[subjectSelect.selectedIndex]?.text || 'Subject';
+            
+            document.getElementById('marksTableContainer').innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading students...</p></div>';
+            document.getElementById('actionButtons').style.display = 'none';
+            
+            try {
+                const studentsRes = await fetch(API_URL + '/api/students');
+                let allStudents = await studentsRes.json();
+                students = allStudents.filter(s => s.class_level === classLevel);
+                
+                if (students.length === 0) {
+                    document.getElementById('marksTableContainer').innerHTML = '<div class="loading"><p>No students found in this class</p></div>';
+                    return;
+                }
+                
+                const marksRes = await fetch(API_URL + `/api/sba?subject_id=${subjectId}&term=${term}&academic_year=${academicYear}`);
+                const existingMarks = await marksRes.json();
+                
+                marksData = {};
+                existingMarks.forEach(m => {
+                    marksData[m.student_id] = m;
+                });
+                
+                renderMarksTable();
+                document.getElementById('actionButtons').style.display = 'flex';
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('marksTableContainer').innerHTML = '<div class="loading"><p>Error loading data</p></div>';
+            }
+        }
+        
+        function renderMarksTable() {
+            let html = `
+                <div class="table-container">
+                    <table id="sbaTable">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Test (15)</th>
+                                <th>Group Work (15)</th>
+                                <th>Mid Term (15)</th>
+                                <th>Project (15)</th>
+                                <th>Sub Total (60)</th>
+                                <th>Class Score (50%)</th>
+                                <th>Exam (100)</th>
+                                <th>Exam Score (50%)</th>
+                                <th>Total (100%)</th>
+                                <th>Grade</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            for (const student of students) {
+                const existing = marksData[student.id] || {};
+                const rowId = student.id;
+                
+                html += `
+                    <tr data-student-id="${student.id}">
+                        <td><strong>${escapeHtml(student.name)}</strong> <span id="saved_${rowId}" class="saved-badge" style="display:none;">Saved</span></td>
+                        <td><input type="number" id="test1_${rowId}" value="${existing.test1 || 0}" min="0" max="15" step="any" onchange="calculateAndDisplayTotals(${rowId})"></td>
+                        <td><input type="number" id="group_${rowId}" value="${existing.group_work || 0}" min="0" max="15" step="any" onchange="calculateAndDisplayTotals(${rowId})"></td>
+                        <td><input type="number" id="mid_${rowId}" value="${existing.mid_term || 0}" min="0" max="15" step="any" onchange="calculateAndDisplayTotals(${rowId})"></td>
+                        <td><input type="number" id="project_${rowId}" value="${existing.project || 0}" min="0" max="15" step="any" onchange="calculateAndDisplayTotals(${rowId})"></td>
+                        <td class="total-cell" id="subtotal_${rowId}">${existing.sub_total || 0}</td>
+                        <td class="total-cell" id="classScore_${rowId}">${existing.class_score || 0}</td>
+                        <td><input type="number" id="exam_${rowId}" value="${existing.exam || 0}" min="0" max="100" step="any" onchange="calculateAndDisplayTotals(${rowId})"></td>
+                        <td class="total-cell" id="examScore_${rowId}">${existing.exam_score || 0}</td>
+                        <td class="total-cell" id="total_${rowId}">${existing.total || 0}</td>
+                        <td class="grade-cell" id="grade_${rowId}">${existing.grade ? `<span class="grade-${existing.grade}">${existing.grade}</span>` : '-'}</td>
+                        <td id="remarks_${rowId}">${existing.remarks || '-'}</td>
+                    </tr>
+                `;
+            }
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            document.getElementById('marksTableContainer').innerHTML = html;
+            
+            for (const student of students) {
+                calculateAndDisplayTotals(student.id);
+            }
+        }
+        
+        async function saveAllMarks() {
+            const classLevel = document.getElementById('classSelect').value;
+            const subjectId = document.getElementById('subjectSelect').value;
+            const term = document.getElementById('termSelect').value;
+            const academicYear = document.getElementById('academicYear').value;
+            
+            if (!classLevel || !subjectId) {
+                showToast('Please select Class and Subject', 'error');
+                return;
+            }
+            
+            showToast('Saving marks...', 'info');
+            
+            let savedCount = 0;
+            let errorCount = 0;
+            
+            for (const student of students) {
+                const rowId = student.id;
+                
+                let test1 = parseFloat(document.getElementById(`test1_${rowId}`)?.value) || 0;
+                let groupWork = parseFloat(document.getElementById(`group_${rowId}`)?.value) || 0;
+                let midTerm = parseFloat(document.getElementById(`mid_${rowId}`)?.value) || 0;
+                let project = parseFloat(document.getElementById(`project_${rowId}`)?.value) || 0;
+                let exam = parseFloat(document.getElementById(`exam_${rowId}`)?.value) || 0;
+                
+                // Round to 2 decimal places
+                test1 = Math.round(test1 * 100) / 100;
+                groupWork = Math.round(groupWork * 100) / 100;
+                midTerm = Math.round(midTerm * 100) / 100;
+                project = Math.round(project * 100) / 100;
+                exam = Math.round(exam * 100) / 100;
+                
+                const subTotal = test1 + groupWork + midTerm + project;
+                const classScore = (subTotal / 60) * 50;
+                const examScore = (exam / 100) * 50;
+                const total = classScore + examScore;
+                const gradeInfo = getGrade(total);
+                
+                const markData = {
+                    student_id: student.id,
+                    subject_id: parseInt(subjectId),
+                    term: parseInt(term),
+                    academic_year: academicYear,
+                    test1: test1,
+                    group_work: groupWork,
+                    mid_term: midTerm,
+                    project: project,
+                    exam: exam,
+                    sub_total: subTotal,
+                    class_score: classScore,
+                    exam_score: examScore,
+                    total: total,
+                    grade: gradeInfo.grade,
+                    remarks: gradeInfo.remark
+                };
+                
+                try {
+                    const checkRes = await fetch(API_URL + `/api/sba/check?student_id=${student.id}&subject_id=${subjectId}&term=${term}&academic_year=${academicYear}`);
+                    const existing = await checkRes.json();
+                    
+                    let response;
+                    if (existing.exists && existing.id) {
+                        response = await fetch(API_URL + `/api/sba/${existing.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(markData)
+                        });
+                    } else {
+                        response = await fetch(API_URL + '/api/sba', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(markData)
+                        });
+                    }
+                    
+                    if (response.ok) {
+                        savedCount++;
+                        const savedSpan = document.getElementById(`saved_${rowId}`);
+                        if (savedSpan) {
+                            savedSpan.style.display = 'inline-block';
+                            setTimeout(() => {
+                                savedSpan.style.display = 'none';
+                            }, 2000);
+                        }
+                    } else {
+                        errorCount++;
+                        console.error(`Failed to save for ${student.name}`);
+                    }
+                } catch (error) {
+                    errorCount++;
+                    console.error(`Error saving ${student.name}:`, error);
+                }
+            }
+            
+            if (errorCount > 0) {
+                showToast(`Saved ${savedCount} records, ${errorCount} errors. Please try again.`, 'error');
+            } else {
+                showToast(`✓ Successfully saved ${savedCount} records!`, 'success');
+            }
+            
+            await loadStudents();
+        }
+        
+        function printToPDF() {
+            const classLevel = document.getElementById('classSelect').value;
+            const subjectId = document.getElementById('subjectSelect').value;
+            const term = document.getElementById('termSelect').value;
+            const academicYear = document.getElementById('academicYear').value;
+            
+            if (!classLevel || !subjectId) {
+                showToast('Please select Class and Subject first', 'error');
+                return;
+            }
+            
+            window.print();
+        }
+        
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.backgroundColor = type === 'error' ? '#ef4444' : (type === 'info' ? '#3b82f6' : '#10b981');
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+        
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+    </script>
+</body>
+</html>
