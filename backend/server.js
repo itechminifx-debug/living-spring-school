@@ -508,6 +508,20 @@ app.get('/api/debug/teachers', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// Delete student
+app.delete('/api/students/:id', async (req, res) => {
+    try {
+        const result = await pool.query('DELETE FROM students WHERE id = $1 RETURNING id', [req.params.id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting student:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 // ==================== START SERVER ====================
 app.listen(PORT, () => {
     console.log(`
