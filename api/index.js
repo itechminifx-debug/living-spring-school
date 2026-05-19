@@ -173,6 +173,28 @@ app.get('/api/subjects', async (req, res) => {
     }
 });
 
+// Test endpoint to check environment variables
+app.get('/api/env-test', (req, res) => {
+    res.json({
+        has_db_url: !!process.env.DATABASE_URL,
+        db_url_prefix: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 30) : 'not set',
+        node_env: process.env.NODE_ENV || 'not set'
+    });
+});
+
+// Test database connection
+app.get('/api/check-db', async (req, res) => {
+    try {
+        if (!process.env.DATABASE_URL) {
+            return res.json({ success: false, error: 'DATABASE_URL environment variable is not set' });
+        }
+        const result = await pool.query('SELECT NOW()');
+        res.json({ success: true, time: result.rows[0].now });
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
+
 // ==================== SERVE FRONTEND ====================
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
