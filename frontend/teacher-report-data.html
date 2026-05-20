@@ -538,70 +538,70 @@
             return 'Completed';
         }
         
-        function saveAllData() {
-            const term = document.getElementById('termSelect').value;
-            const academicYear = document.getElementById('academicYear').value;
-            const traits = getPersonalDevTraits();
-            const key = `${currentClass}_${term}_${academicYear}`;
-            
-            const allSavedData = JSON.parse(localStorage.getItem('teacher_report_data') || '{}');
-            const classData = {};
-            
-            for (const student of students) {
-                const studentKey = student.id;
-                const studentData = {};
-                
-                // Save Personal Development grades
-                for (let i = 0; i < traits.length; i++) {
-                    const select = document.getElementById(`pd_${studentKey}_${i}`);
-                    if (select) {
-                        studentData[`pd_${i}`] = select.value;
-                    }
-                }
-                
-                // Save attendance
-                studentData.attendance_present = document.getElementById(`attendance_present_${studentKey}`)?.value || '';
-                studentData.attendance_total = document.getElementById(`attendance_total_${studentKey}`)?.value || '';
-                studentData.promoted_to = document.getElementById(`promoted_to_${studentKey}`)?.value || '';
-                studentData.conduct = document.getElementById(`conduct_${studentKey}`)?.value || '';
-                studentData.interest = document.getElementById(`interest_${studentKey}`)?.value || '';
-                studentData.teacher_remarks = document.getElementById(`teacher_remarks_${studentKey}`)?.value || '';
-                studentData.headteacher_remarks = document.getElementById(`headteacher_remarks_${studentKey}`)?.value || '';
-                
-                classData[studentKey] = studentData;
+        async function saveAllData() {
+    const term = document.getElementById('termSelect').value;
+    const academicYear = document.getElementById('academicYear').value;
+    const traits = getPersonalDevTraits();
+    
+    showToast('Saving data to database...', 'info');
+    
+    let savedCount = 0;
+    let errorCount = 0;
+    
+    for (const student of students) {
+        const studentKey = student.id;
+        const studentData = {};
+        
+        // Collect Personal Development grades
+        for (let i = 0; i < traits.length; i++) {
+            const select = document.getElementById(`pd_${studentKey}_${i}`);
+            if (select) {
+                studentData[`pd_${i}`] = select.value;
             }
-            
-            allSavedData[key] = classData;
-            localStorage.setItem('teacher_report_data', JSON.stringify(allSavedData));
-            
-            showToast('All data saved successfully!', 'success');
         }
         
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.style.backgroundColor = type === 'error' ? '#ef4444' : '#10b981';
-            toast.style.display = 'block';
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 3000);
-        }
+        // Collect other data
+        studentData.attendance_present = document.getElementById(`attendance_present_${studentKey}`)?.value || '';
+        studentData.attendance_total = document.getElementById(`attendance_total_${studentKey}`)?.value || '';
+        studentData.promoted_to = document.getElementById(`promoted_to_${studentKey}`)?.value || '';
+        studentData.conduct = document.getElementById(`conduct_${studentKey}`)?.value || '';
+        studentData.interest = document.getElementById(`interest_${studentKey}`)?.value || '';
+        studentData.teacher_remarks = document.getElementById(`teacher_remarks_${studentKey}`)?.value || '';
+        studentData.headteacher_remarks = document.getElementById(`headteacher_remarks_${studentKey}`)?.value || '';
         
-        function logout() {
-            localStorage.removeItem('teacherToken');
-            localStorage.removeItem('teacher');
-            localStorage.removeItem('teacherSelectedClass');
-            window.location.href = 'teacher-login.html';
-        }
-        
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str).replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
+        try {
+            const response = await fetch(API_URL + '/api/report-card-data', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${teacherToken}`
+                },
+                body: JSON.stringify({
+                    student_id: student.id,
+                    class_level: currentClass,
+                    term: term,
+                    academic_year: academicYear,
+                    ...studentData,
+                    traits_count: traits.length
+                })
             });
+            
+            if (response.ok) {
+                savedCount++;
+            } else {
+                errorCount++;
+            }
+        } catch (error) {
+            errorCount++;
+        }
+    }
+    
+    if (errorCount > 0) {
+        showToast(`Saved ${savedCount} records, ${errorCount} errors`, 'error');
+    } else {
+        showToast(`✓ Successfully saved ${savedCount} records to database!`, 'success');
+    }
+}
         }
         
         // Initialize
