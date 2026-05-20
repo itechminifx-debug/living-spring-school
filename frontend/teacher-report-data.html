@@ -276,7 +276,7 @@
                     <input type="text" id="academicYear" value="2025/2026" style="width: 120px;">
                 </div>
                 <button class="btn" onclick="loadStudents()">Load Students</button>
-                <button class="btn btn-success" onclick="saveAllData()">💾 Save All Data</button>
+                <button class="btn btn-success" onclick="saveAllData()">💾 Save All Data to Database</button>
             </div>
             
             <div id="dataTableContainer">
@@ -296,7 +296,6 @@
         let teacherToken = null;
         let teacher = null;
         let currentClass = null;
-        let savedData = {};
         
         // Get class from URL parameter or localStorage
         const urlParams = new URLSearchParams(window.location.search);
@@ -401,7 +400,7 @@
             document.getElementById('dataTableContainer').innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading students...</p></div>';
             
             try {
-                // Load students
+                // Load students from database
                 const studentsRes = await fetch(API_URL + `/api/teacher/students?class_level=${currentClass}`, {
                     headers: { 'Authorization': `Bearer ${teacherToken}` }
                 });
@@ -414,12 +413,9 @@
                     return;
                 }
                 
-                // Load saved data from localStorage
-                const allSavedData = JSON.parse(localStorage.getItem('teacher_report_data') || '{}');
-                const key = `${currentClass}_${term}_${academicYear}`;
-                savedData = allSavedData[key] || {};
+                // Load existing saved data from DATABASE (not localStorage)
+                await loadSavedDataFromDatabase(term, academicYear);
                 
-                renderDataTable();
             } catch (error) {
                 console.error('Error loading students:', error);
                 document.getElementById('dataTableContainer').innerHTML = '<div class="loading"><p>Error loading students</p></div>';
@@ -427,7 +423,31 @@
             }
         }
         
-        function renderDataTable() {
+        // NEW FUNCTION: Load saved data from database
+        async function loadSavedDataFromDatabase(term, academicYear) {
+            const savedDataMap = {};
+            
+            for (const student of students) {
+                try {
+                    const response = await fetch(API_URL + `/api/report-card-data?student_id=${student.id}&term=${term}&academic_year=${academicYear}`, {
+                        headers: { 'Authorization': `Bearer ${teacherToken}` }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && Object.keys(data).length > 0) {
+                            savedDataMap[student.id] = data;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading saved data for student', student.id, error);
+                }
+            }
+            
+            renderDataTable(savedDataMap);
+        }
+        
+        function renderDataTable(savedDataMap = {}) {
             const traits = getPersonalDevTraits();
             const term = document.getElementById('termSelect').value;
             const academicYear = document.getElementById('academicYear').value;
@@ -454,18 +474,18 @@
             `;
             
             for (const student of students) {
-                const studentData = savedData[student.id] || {};
+                const studentData = savedDataMap[student.id] || {};
                 const studentKey = student.id;
                 
                 // Personal Development cells
                 let pdCells = '';
                 for (let i = 0; i < traits.length; i++) {
-                    const traitKey = traits[i].toLowerCase().replace(/[^a-z]/g, '_');
+                    const savedValue = studentData[`pd_${i}`] || '';
                     pdCells += `
                         <td>
                             <select id="pd_${studentKey}_${i}" data-student="${studentKey}" data-trait="${i}">
                                 <option value="">--</option>
-                                ${gradeOptions.map(g => `<option value="${g}" ${studentData[`pd_${i}`] === g ? 'selected' : ''}>${g}</option>`).join('')}
+                                ${gradeOptions.map(g => `<option value="${g}" ${savedValue === g ? 'selected' : ''}>${g}</option>`).join('')}
                             </select>
                         </td>
                     `;
@@ -538,20 +558,36 @@
             return 'Completed';
         }
         
-        function saveAllData() {
+        // UPDATED: Save to DATABASE instead of localStorage
+        async function saveAllData() {
             const term = document.getElementById('termSelect').value;
             const academicYear = document.getElementById('academicYear').value;
             const traits = getPersonalDevTraits();
-            const key = `${currentClass}_${term}_${academicYear}`;
             
-            const allSavedData = JSON.parse(localStorage.getItem('teacher_report_data') || '{}');
-            const classData = {};
+            showToast('Saving to database...', 'info');
+            
+            let savedCount = 0;
+            let errorCount = 0;
             
             for (const student of students) {
                 const studentKey = student.id;
-                const studentData = {};
                 
-                // Save Personal Development grades
+                // Build the data object for this student
+                const studentData = {
+                    student_id: student.id,
+                    class_level: currentClass,
+                    term: parseInt(term),
+                    academic_year: academicYear,
+                    attendance_present: document.getElementById(`attendance_present_${studentKey}`)?.value || '',
+                    attendance_total: document.getElementById(`attendance_total_${studentKey}`)?.value || '',
+                    promoted_to: document.getElementById(`promoted_to_${studentKey}`)?.value || '',
+                    conduct: document.getElementById(`conduct_${studentKey}`)?.value || '',
+                    interest: document.getElementById(`interest_${studentKey}`)?.value || '',
+                    teacher_remarks: document.getElementById(`teacher_remarks_${studentKey}`)?.value || '',
+                    headteacher_remarks: document.getElementById(`headteacher_remarks_${studentKey}`)?.value || ''
+                };
+                
+                // Add Personal Development grades (pd_0, pd_1, etc.)
                 for (let i = 0; i < traits.length; i++) {
                     const select = document.getElementById(`pd_${studentKey}_${i}`);
                     if (select) {
@@ -559,28 +595,46 @@
                     }
                 }
                 
-                // Save attendance
-                studentData.attendance_present = document.getElementById(`attendance_present_${studentKey}`)?.value || '';
-                studentData.attendance_total = document.getElementById(`attendance_total_${studentKey}`)?.value || '';
-                studentData.promoted_to = document.getElementById(`promoted_to_${studentKey}`)?.value || '';
-                studentData.conduct = document.getElementById(`conduct_${studentKey}`)?.value || '';
-                studentData.interest = document.getElementById(`interest_${studentKey}`)?.value || '';
-                studentData.teacher_remarks = document.getElementById(`teacher_remarks_${studentKey}`)?.value || '';
-                studentData.headteacher_remarks = document.getElementById(`headteacher_remarks_${studentKey}`)?.value || '';
-                
-                classData[studentKey] = studentData;
+                try {
+                    const response = await fetch(API_URL + '/api/report-card-data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${teacherToken}`
+                        },
+                        body: JSON.stringify(studentData)
+                    });
+                    
+                    if (response.ok) {
+                        savedCount++;
+                    } else {
+                        errorCount++;
+                        const errorData = await response.json();
+                        console.error('Error saving student', student.id, errorData);
+                    }
+                } catch (error) {
+                    console.error('Network error for student', student.id, error);
+                    errorCount++;
+                }
             }
             
-            allSavedData[key] = classData;
-            localStorage.setItem('teacher_report_data', JSON.stringify(allSavedData));
-            
-            showToast('All data saved successfully!', 'success');
+            if (errorCount > 0) {
+                showToast(`✅ Saved ${savedCount} students, ❌ ${errorCount} errors`, 'error');
+            } else {
+                showToast(`✅ Successfully saved all ${savedCount} students to the database!`, 'success');
+            }
         }
         
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             toast.textContent = message;
-            toast.style.backgroundColor = type === 'error' ? '#ef4444' : '#10b981';
+            if (type === 'error') {
+                toast.style.backgroundColor = '#ef4444';
+            } else if (type === 'info') {
+                toast.style.backgroundColor = '#3b82f6';
+            } else {
+                toast.style.backgroundColor = '#10b981';
+            }
             toast.style.display = 'block';
             setTimeout(() => {
                 toast.style.display = 'none';
