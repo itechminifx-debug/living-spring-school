@@ -125,7 +125,6 @@
             display: none;
         }
         
-        /* Full Report Card Styles */
         .report-card {
             background: white;
             padding: 30px;
@@ -443,8 +442,8 @@
         }
         
         function renderFullReportCard(data, term, academicYear) {
-            const student = data.student;
-            const subjects = data.subjects;
+            let student = data.student;
+            let subjects = data.subjects;
             const sbaMarks = data.sbaMarks;
             const reportData = data.reportData || {};
             const settings = data.settings || {};
@@ -452,6 +451,17 @@
             const subjectPositions = data.subjectPositions || {};
             const overallPosition = data.overallPosition || 0;
             const totalStudents = data.totalStudents || 0;
+            
+            // FIX: Remove duplicate subjects
+            const uniqueSubjects = [];
+            const subjectNames = new Set();
+            for (const subject of subjects) {
+                if (!subjectNames.has(subject.name)) {
+                    subjectNames.add(subject.name);
+                    uniqueSubjects.push(subject);
+                }
+            }
+            subjects = uniqueSubjects;
             
             const termText = term === '1' ? 'First Term' : (term === '2' ? 'Second Term' : 'Third Term');
             const className = getClassName(student.class_level);
