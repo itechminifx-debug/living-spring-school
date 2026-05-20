@@ -274,18 +274,30 @@ app.put('/api/students/:id', async (req, res) => {
     }
 });
 
+// ==================== FIXED DELETE STUDENT ENDPOINT ====================
 app.delete('/api/students/:id', async (req, res) => {
+    const studentId = req.params.id;
+    
     try {
-        await pool.query('DELETE FROM sba_marks WHERE student_id = $1', [req.params.id]);
-        const result = await pool.query('DELETE FROM students WHERE id = $1 RETURNING id', [req.params.id]);
+        // 1. Delete from report_card_data (teacher report data - Personal Development, Attendance, etc.)
+        await pool.query('DELETE FROM report_card_data WHERE student_id = $1', [studentId]);
+        console.log(`✅ Deleted report_card_data for student ${studentId}`);
+        
+        // 2. Delete from sba_marks (academic marks)
+        await pool.query('DELETE FROM sba_marks WHERE student_id = $1', [studentId]);
+        console.log(`✅ Deleted sba_marks for student ${studentId}`);
+        
+        // 3. Finally delete the student
+        const result = await pool.query('DELETE FROM students WHERE id = $1 RETURNING id', [studentId]);
         
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Student not found' });
         }
         
-        res.json({ success: true });
+        console.log(`✅ Deleted student ${studentId} successfully`);
+        res.json({ success: true, message: 'Student and all related records deleted successfully' });
     } catch (error) {
-        console.error('Error deleting student:', error);
+        console.error('❌ Error deleting student:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -703,7 +715,7 @@ app.get('/api/report-card-data', async (req, res) => {
     }
 });
 
-// ==================== PARENT FULL REPORT API (FIXED - reads from database, not localStorage) ====================
+// ==================== PARENT FULL REPORT API ====================
 app.get('/api/parent/full-report', authenticateToken, async (req, res) => {
     if (req.user.role !== 'parent') {
         return res.status(403).json({ success: false, message: 'Access denied' });
@@ -755,7 +767,7 @@ app.get('/api/parent/full-report', authenticateToken, async (req, res) => {
         );
         console.log('SBA marks found:', sbaResult.rows.length);
         
-        // 4. FIXED: GET TEACHER-ENTERED REPORT DATA FROM DATABASE (not localStorage)
+        // 4. GET TEACHER-ENTERED REPORT DATA FROM DATABASE
         const reportDataResult = await pool.query(
             'SELECT * FROM report_card_data WHERE student_id = $1 AND term = $2 AND academic_year = $3',
             [student.id, term, academic_year]
@@ -861,7 +873,8 @@ app.listen(PORT, () => {
 ║     Server running on port ${PORT}                         ║
 ║     http://localhost:${PORT}                               ║
 ║                                                           ║
-║     🔐 Login Credentials:                                ║║     Admin: admin / admin123                              ║
+║     🔐 Login Credentials:                                ║
+║     Admin: admin / admin123                              ║
 ║     Teacher: teacher@livingspring.edu.gh / teacher123    ║
 ║     Parent: parent@livingspring.edu.gh / parent123       ║
 ║                                                           ║
