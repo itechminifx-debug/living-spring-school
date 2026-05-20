@@ -274,20 +274,24 @@ app.put('/api/students/:id', async (req, res) => {
     }
 });
 
-// ==================== FIXED DELETE STUDENT ENDPOINT ====================
+// ==================== FIXED DELETE STUDENT ENDPOINT (Handles all foreign keys) ====================
 app.delete('/api/students/:id', async (req, res) => {
     const studentId = req.params.id;
     
     try {
-        // 1. Delete from report_card_data (teacher report data - Personal Development, Attendance, etc.)
+        // 1. Delete from parent_student_link (parent-child relationships)
+        await pool.query('DELETE FROM parent_student_link WHERE student_id = $1', [studentId]);
+        console.log(`✅ Deleted parent_student_link for student ${studentId}`);
+        
+        // 2. Delete from report_card_data (teacher report data - Personal Development, Attendance, etc.)
         await pool.query('DELETE FROM report_card_data WHERE student_id = $1', [studentId]);
         console.log(`✅ Deleted report_card_data for student ${studentId}`);
         
-        // 2. Delete from sba_marks (academic marks)
+        // 3. Delete from sba_marks (academic marks)
         await pool.query('DELETE FROM sba_marks WHERE student_id = $1', [studentId]);
         console.log(`✅ Deleted sba_marks for student ${studentId}`);
         
-        // 3. Finally delete the student
+        // 4. Finally delete the student
         const result = await pool.query('DELETE FROM students WHERE id = $1 RETURNING id', [studentId]);
         
         if (result.rows.length === 0) {
