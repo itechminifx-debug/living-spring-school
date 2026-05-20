@@ -1147,6 +1147,80 @@ app.get('/api/parent/full-report', authenticateToken, async (req, res) => {
     }
 });
 
+// ==================== REPORT CARD DATA API ====================
+
+// Save report card data
+app.post('/api/report-card-data', authenticateToken, async (req, res) => {
+    const { 
+        student_id, class_level, term, academic_year,
+        attendance_present, attendance_total, promoted_to,
+        conduct, interest, teacher_remarks, headteacher_remarks,
+        traits_count, ...pdData
+    } = req.body;
+    
+    try {
+        // Build PD columns dynamically
+        const pdColumns = [];
+        const pdValues = [];
+        for (let i = 0; i < (traits_count || 10); i++) {
+            if (pdData[`pd_${i}`] !== undefined) {
+                pdColumns.push(`pd_${i} = $${pdValues.length + 1}`);
+                pdValues.push(pdData[`pd_${i}`]);
+            }
+        }
+        
+        const result = await pool.query(
+            `INSERT INTO report_card_data 
+             (student_id, class_level, term, academic_year, 
+              attendance_present, attendance_total, promoted_to,
+              conduct, interest, teacher_remarks, headteacher_remarks,
+              ${pdColumns.map(c => c.split('=')[0].trim()).join(', ')})
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, ${pdValues.map((_, i) => `$${12 + i}`).join(', ')})
+             ON CONFLICT (student_id, term, academic_year) 
+             DO UPDATE SET 
+              attendance_present = EXCLUDED.attendance_present,
+              attendance_total = EXCLUDED.attendance_total,
+              promoted_to = EXCLUDED.promoted_to,
+              conduct = EXCLUDED.conduct,
+              interest = EXCLUDED.interest,
+              teacher_remarks = EXCLUDED.teacher_remarks,
+              headteacher_remarks = EXCLUDED.headteacher_remarks,
+              ${pdColumns.map(c => `${c.split('=')[0].trim()} = EXCLUDED.${c.split('=')[0].trim()}`).join(', ')},
+              updated_at = CURRENT_TIMESTAMP
+             RETURNING *`,
+            [student_id, class_level, term, academic_year, 
+             attendance_present, attendance_total, promoted_to,
+             conduct, interest, teacher_remarks, headteacher_remarks,
+             ...pdValues]
+        );
+        
+        res.json({ success: true, data: result.rows[0] });
+    } catch (error) {
+        console.error('Error saving report card data:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get report card data for a student
+app.get('/api/report-card-data', async (req, res) => {
+    const { student_id, term, academic_year } = req.query;
+    
+    try {
+        const result = await pool.query(
+            'SELECT * FROM report_card_data WHERE student_id = $1 AND term = $2 AND academic_year = $3',
+            [student_id, term, academic_year]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.json({});
+        }
+        
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error fetching report card data:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 // ==================== START SERVER ====================
 app.listen(PORT, () => {
     console.log(`
