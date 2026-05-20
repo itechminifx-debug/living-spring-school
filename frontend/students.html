@@ -175,6 +175,11 @@
             font-size: 14px;
         }
         
+        .form-group input:read-only {
+            background-color: #f0f2f5;
+            cursor: not-allowed;
+        }
+        
         .form-group small {
             display: block;
             font-size: 10px;
@@ -319,9 +324,9 @@
                 <input type="text" id="studentName" placeholder="Full name">
             </div>
             <div class="form-group">
-                <label>Student ID (Optional - Cannot change after creation)</label>
+                <label>Student ID</label>
                 <input type="text" id="studentManualId" placeholder="e.g., LS-2024-001 or STU001">
-                <small>Leave empty to auto-generate. Student ID cannot be changed after creation.</small>
+                <small id="studentIdHelp">Leave empty to auto-generate (e.g., LS-0001, LS-0002)</small>
             </div>
             <div class="form-group">
                 <label>Class Level</label>
@@ -401,7 +406,7 @@
                 renderTable(students);
             } catch (error) {
                 console.error('Error:', error);
-                document.getElementById('studentsTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">Error loading students</td></tr>';
+                document.getElementById('studentsTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">Error loading students</span></tr>';
             }
         }
         
@@ -419,7 +424,7 @@
             const tbody = document.getElementById('studentsTableBody');
             
             if (students.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">No students found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">No students found</span></tr>';
                 return;
             }
             
@@ -427,15 +432,15 @@
             students.forEach(s => {
                 html += `
                     <tr>
-                        <td><strong>${escapeHtml(s.student_id)}</strong></td>
-                        <td>${escapeHtml(s.name)}</td>
-                        <td>${formatClassName(s.class_level)}</td>
-                        <td>${s.house || '-'}</td>
-                        <td>${s.gender || '-'}</td>
+                        <td><strong>${escapeHtml(s.student_id)}</strong></span></td>
+                        <td>${escapeHtml(s.name)}</span></td>
+                        <td>${formatClassName(s.class_level)}</span></td>
+                        <td>${s.house || '-'}</span></td>
+                        <td>${s.gender || '-'}</span></td>
                         <td class="action-buttons">
                             <button class="edit-btn" onclick="editStudent(${s.id})">Edit</button>
                             <button class="delete-btn" onclick="deleteStudent(${s.id})">Delete</button>
-                        </td>
+                        </span></td>
                     </tr>
                 `;
             });
@@ -446,9 +451,13 @@
             document.getElementById('modalTitle').innerText = 'Add Student';
             document.getElementById('studentId').value = '';
             document.getElementById('studentName').value = '';
-            document.getElementById('studentManualId').value = '';
-            document.getElementById('studentManualId').readOnly = false;
-            document.getElementById('studentManualId').style.backgroundColor = 'white';
+            // Make Student ID field EDITABLE for adding new student
+            const idField = document.getElementById('studentManualId');
+            idField.value = '';
+            idField.readOnly = false;
+            idField.style.backgroundColor = 'white';
+            idField.placeholder = 'e.g., LS-2024-001 or STU001';
+            document.getElementById('studentIdHelp').innerHTML = 'Leave empty to auto-generate (e.g., LS-0001, LS-0002)';
             document.getElementById('studentClass').value = 'KG1';
             document.getElementById('studentHouse').value = '';
             document.getElementById('studentGender').value = 'Male';
@@ -463,9 +472,13 @@
                 document.getElementById('modalTitle').innerText = 'Edit Student';
                 document.getElementById('studentId').value = student.id;
                 document.getElementById('studentName').value = student.name;
-                document.getElementById('studentManualId').value = student.student_id || '';
-                document.getElementById('studentManualId').readOnly = true;
-                document.getElementById('studentManualId').style.backgroundColor = '#f0f2f5';
+                // Make Student ID field READ-ONLY for editing (cannot change)
+                const idField = document.getElementById('studentManualId');
+                idField.value = student.student_id || '';
+                idField.readOnly = true;
+                idField.style.backgroundColor = '#f0f2f5';
+                idField.placeholder = 'Student ID cannot be changed';
+                document.getElementById('studentIdHelp').innerHTML = 'Student ID cannot be changed after creation';
                 document.getElementById('studentClass').value = student.class_level;
                 document.getElementById('studentHouse').value = student.house || '';
                 document.getElementById('studentGender').value = student.gender || 'Male';
@@ -493,7 +506,7 @@
             try {
                 let response;
                 if (id) {
-                    // EDIT MODE - Update existing student
+                    // EDIT MODE - Update existing student (without student_id)
                     console.log('Updating student:', id, studentData);
                     response = await fetch(API_URL + `/api/students/${id}`, {
                         method: 'PUT',
@@ -504,7 +517,7 @@
                         body: JSON.stringify(studentData)
                     });
                 } else {
-                    // ADD MODE - Create new student
+                    // ADD MODE - Create new student (include student_id if provided)
                     if (manualId) {
                         studentData.student_id = manualId;
                     }
