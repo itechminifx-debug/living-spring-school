@@ -249,7 +249,7 @@
         
         .dev-item {
             display: flex;
-            justify-width: space-between;
+            justify-content: space-between;
             padding: 4px 0;
             font-size: 12px;
             border-bottom: 1px solid #e2e8f0;
@@ -422,6 +422,9 @@
         let currentYear = '2025/2026';
         let schoolSettings = {};
         
+        // Store report data from database
+        let reportDataMap = {};
+        
         // Check login
         const token = localStorage.getItem('token');
         if (!token) {
@@ -431,7 +434,7 @@
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         document.getElementById('userName').innerText = user.username || 'Admin';
         
-        // Load saved settings from localStorage as fallback
+        // Load saved term and year
         const savedYear = localStorage.getItem('academicYear');
         if (savedYear) {
             document.getElementById('academicYear').value = savedYear;
@@ -471,34 +474,53 @@
                 return schoolSettings;
             } catch (error) {
                 console.error('Error fetching settings:', error);
-                // Fallback to localStorage
+                // Fallback to defaults
                 return {
-                    name: localStorage.getItem('schoolName') || 'Living Spring Adventist Academy',
-                    address: localStorage.getItem('schoolAddress') || 'P.O. Box 123, Accra - Ghana',
-                    email: localStorage.getItem('schoolEmail') || 'info@livingspring.edu.gh',
-                    phone: localStorage.getItem('schoolPhone') || '+233 XX XXX XXXX',
-                    motto: localStorage.getItem('schoolMotto') || 'Excellence in Education',
-                    logoUrl: localStorage.getItem('logoUrl') || '🏫',
-                    headteacherName: localStorage.getItem('headteacherName') || 'Dr. James Wilson',
-                    signatureUrl: localStorage.getItem('signatureUrl') || '',
-                    termBegins: localStorage.getItem('termBegins') || '',
-                    termEnds: localStorage.getItem('termEnds') || '',
-                    nextTermReopens: localStorage.getItem('nextTermReopens') || '',
-                    gradeARemark: localStorage.getItem('gradeARemark') || 'Excellent',
-                    gradeBRemark: localStorage.getItem('gradeBRemark') || 'Very Good',
-                    gradeCRemark: localStorage.getItem('gradeCRemark') || 'Good',
-                    gradeDRemark: localStorage.getItem('gradeDRemark') || 'Satisfactory',
-                    gradeERemark: localStorage.getItem('gradeERemark') || 'Weak',
-                    gradeFRemark: localStorage.getItem('gradeFRemark') || 'Fail'
+                    name: 'Living Spring Adventist Academy',
+                    address: 'P.O. Box 123, Accra - Ghana',
+                    email: 'info@livingspring.edu.gh',
+                    phone: '+233 XX XXX XXXX',
+                    motto: 'Excellence in Education',
+                    logoUrl: '🏫',
+                    headteacherName: 'Dr. James Wilson',
+                    signatureUrl: '',
+                    termBegins: '',
+                    termEnds: '',
+                    nextTermReopens: '',
+                    gradeARemark: 'Excellent',
+                    gradeBRemark: 'Very Good',
+                    gradeCRemark: 'Good',
+                    gradeDRemark: 'Satisfactory',
+                    gradeERemark: 'Weak',
+                    gradeFRemark: 'Fail'
                 };
             }
         }
         
-        // Load report data from localStorage (from teacher-report-data.html)
-        function loadReportData(classLevel, term, academicYear) {
-            const allSavedData = JSON.parse(localStorage.getItem('teacher_report_data') || '{}');
-            const key = `${classLevel}_${term}_${academicYear}`;
-            return allSavedData[key] || {};
+        // FIXED: Load report data from DATABASE (not localStorage)
+        async function loadReportDataFromDatabase(studentId, term, academicYear) {
+            try {
+                const response = await fetch(API_URL + `/api/report-card-data?student_id=${studentId}&term=${term}&academic_year=${academicYear}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return data || {};
+                }
+                return {};
+            } catch (error) {
+                console.error('Error loading report data from database:', error);
+                return {};
+            }
+        }
+        
+        async function loadAllReportDataFromDatabase(term, academicYear) {
+            reportDataMap = {};
+            for (const student of students) {
+                const data = await loadReportDataFromDatabase(student.id, term, academicYear);
+                reportDataMap[student.id] = data;
+            }
         }
         
         function getClassName(classLevel) {
@@ -572,6 +594,9 @@
                 // Load SBA marks
                 const marksRes = await fetch(API_URL + `/api/sba/all?class_level=${classLevel}&term=${term}&academic_year=${academicYear}`);
                 sbaMarks = await marksRes.json();
+                
+                // FIXED: Load report data from DATABASE for all students
+                await loadAllReportDataFromDatabase(term, academicYear);
                 
                 renderStudentList();
             } catch (error) {
@@ -654,9 +679,8 @@
             const classPosition = getOverallPosition(studentId);
             const personalDevTraits = getPersonalDevTraits(currentClass);
             
-            // Load teacher-entered report data
-            const reportDataObj = loadReportData(currentClass, currentTerm, currentYear);
-            const studentReportData = reportDataObj[student.id] || {};
+            // FIXED: Get report data from DATABASE (already loaded into reportDataMap)
+            const studentReportData = reportDataMap[student.id] || {};
             
             // Build subject table
             let subjectsHtml = '';
@@ -704,14 +728,14 @@
             else if (average >= 40) overallGrade = 'E';
             else overallGrade = 'F';
             
-            // Get Personal Development grades from teacher data
+            // Get Personal Development grades from DATABASE
             let devHtml = '';
             for (let i = 0; i < personalDevTraits.length; i++) {
                 const grade = studentReportData[`pd_${i}`] || '—';
                 devHtml += `<div class="dev-item"><span>${personalDevTraits[i]}:</span><span><strong>${grade}</strong></span></div>`;
             }
             
-            // Get attendance and other data from teacher entry
+            // Get attendance and other data from DATABASE
             const attendancePresent = studentReportData.attendance_present || '___';
             const attendanceTotal = studentReportData.attendance_total || '___';
             const promotedTo = studentReportData.promoted_to || '_____________';
@@ -870,9 +894,8 @@
             const classPosition = getOverallPosition(studentId);
             const personalDevTraits = getPersonalDevTraits(currentClass);
             
-            // Load teacher-entered report data
-            const reportDataObj = loadReportData(currentClass, currentTerm, currentYear);
-            const studentReportData = reportDataObj[student.id] || {};
+            // FIXED: Get report data from DATABASE
+            const studentReportData = reportDataMap[student.id] || {};
             
             // Build subject table
             let subjectsHtml = '';
@@ -920,7 +943,7 @@
             else if (average >= 40) overallGrade = 'E';
             else overallGrade = 'F';
             
-            // Get Personal Development grades from teacher data
+            // Get Personal Development grades from DATABASE
             let devHtml = '';
             for (let i = 0; i < personalDevTraits.length; i++) {
                 const grade = studentReportData[`pd_${i}`] || '—';
@@ -967,7 +990,7 @@
                     
                     <table class="subjects-table">
                         <thead><tr><th>Subject</th><th>Class Score (50%)</th><th>Exam Score (50%)</th><th>Total (100%)</th><th>Grade</th><th>Position</th><th>Remarks</th></tr></thead>
-                        <tbody>${subjectsHtml}<tr class="total-row"><td colspan="4"><strong>Overall Average</strong></td><td colspan="3"><strong>${average}%</strong> <strong>${overallGrade}</strong></tr></tbody>
+                        <tbody>${subjectsHtml}<tr class="total-row"><td colspan="4"><strong>Overall Average</strong></td><td colspan="3"><strong>${average}%</strong> <strong>${overallGrade}</strong></td></tr></tbody>
                     </table>
                     
                     <div class="personal-dev"><h4>📋 Personal Development</h4><div class="dev-grid">${devHtml}</div></div>
@@ -1021,8 +1044,7 @@
         
         // Initialize
         loadSchoolSettings().then(() => {
-            // Load default settings into the page
-            document.getElementById('academicYear').value = schoolSettings.academicYear || '2025/2026';
+            document.getElementById('academicYear').value = '2025/2026';
         });
     </script>
 </body>
