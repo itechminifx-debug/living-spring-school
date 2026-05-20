@@ -320,10 +320,8 @@
             </div>
             <div class="form-group">
                 <label>Student ID (Optional - Cannot change after creation)</label>
-                <input type="text" id="studentManualId" placeholder="e.g., LS-2024-001 or STU001" 
-                       readonly id="studentManualIdReadonly" style="background-color:#f0f2f5;">
-                <input type="hidden" id="studentManualIdHidden">
-                <small>Student ID can only be set when adding a new student</small>
+                <input type="text" id="studentManualId" placeholder="e.g., LS-2024-001 or STU001">
+                <small>Leave empty to auto-generate. Student ID cannot be changed after creation.</small>
             </div>
             <div class="form-group">
                 <label>Class Level</label>
@@ -448,10 +446,9 @@
             document.getElementById('modalTitle').innerText = 'Add Student';
             document.getElementById('studentId').value = '';
             document.getElementById('studentName').value = '';
-            // For add mode, show editable ID field
+            document.getElementById('studentManualId').value = '';
             document.getElementById('studentManualId').readOnly = false;
             document.getElementById('studentManualId').style.backgroundColor = 'white';
-            document.getElementById('studentManualId').value = '';
             document.getElementById('studentClass').value = 'KG1';
             document.getElementById('studentHouse').value = '';
             document.getElementById('studentGender').value = 'Male';
@@ -466,11 +463,9 @@
                 document.getElementById('modalTitle').innerText = 'Edit Student';
                 document.getElementById('studentId').value = student.id;
                 document.getElementById('studentName').value = student.name;
-                // For edit mode, make ID field readonly (cannot change student ID)
-                const idField = document.getElementById('studentManualId');
-                idField.value = student.student_id || '';
-                idField.readOnly = true;
-                idField.style.backgroundColor = '#f0f2f5';
+                document.getElementById('studentManualId').value = student.student_id || '';
+                document.getElementById('studentManualId').readOnly = true;
+                document.getElementById('studentManualId').style.backgroundColor = '#f0f2f5';
                 document.getElementById('studentClass').value = student.class_level;
                 document.getElementById('studentHouse').value = student.house || '';
                 document.getElementById('studentGender').value = student.gender || 'Male';
@@ -498,7 +493,7 @@
             try {
                 let response;
                 if (id) {
-                    // EDIT MODE - Only send name, class_level, house, gender (NOT student_id)
+                    // EDIT MODE - Update existing student
                     console.log('Updating student:', id, studentData);
                     response = await fetch(API_URL + `/api/students/${id}`, {
                         method: 'PUT',
@@ -509,7 +504,7 @@
                         body: JSON.stringify(studentData)
                     });
                 } else {
-                    // ADD MODE - Include student_id if provided
+                    // ADD MODE - Create new student
                     if (manualId) {
                         studentData.student_id = manualId;
                     }
@@ -517,7 +512,7 @@
                     response = await fetch(API_URL + '/api/students', {
                         method: 'POST',
                         headers: { 
-                            'Content-Type': application/json',
+                            'Content-Type': 'application/json',
                             'Authorization': `Bearer ${token}`
                         },
                         body: JSON.stringify(studentData)
